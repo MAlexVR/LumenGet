@@ -1,4 +1,4 @@
-# Lumen — proposal
+# LumenGet — proposal
 
 ## Goals
 1. Rewrite the core in **Rust** for speed and a single code base.

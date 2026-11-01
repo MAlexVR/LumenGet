@@ -1,6 +1,6 @@
 # Spike: Skool login through an in-app webview
 
-Question: can Lumen log in to Skool inside a Tauri webview (a real browser engine, which the CloudFront WAF accepts) and
+Question: can LumenGet log in to Skool inside a Tauri webview (a real browser engine, which the CloudFront WAF accepts) and
 read the session cookies, instead of asking the user to paste them?
 
 ## Answer
@@ -31,7 +31,7 @@ So the HttpOnly `auth_token` is readable, polling works from a non-main thread, 
   embedded engine through. The WAF blocks non-browser clients; a real WebKitGTK/WebView2 engine is expected to pass but
   this was not tried against skool.com.
 - Windows / WebView2. Tauri documents that `cookies()` can deadlock on Windows when called from a synchronous command
-  or event handler. Lumen avoids it: `skool_login_webview` is an `async` command and reads the jar inside
+  or event handler. LumenGet avoids it: `skool_login_webview` is an `async` command and reads the jar inside
   `spawn_blocking`. Still unverified on Windows.
 - macOS (not a target).
 

@@ -1,6 +1,6 @@
 <script lang="ts">
   // Descargas: platform picker; a platform id opens its flow or, when the
-  // platform is not in Lumen yet, a calm inline detail.
+  // platform is not in LumenGet yet, a calm inline detail.
   import Icon from "../lib/design/Icon.svelte";
   import { t } from "../lib/i18n/index.svelte";
   import { platformById } from "../lib/platforms";

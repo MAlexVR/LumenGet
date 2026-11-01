@@ -1,6 +1,6 @@
 # Spike: Udemy login through an in-app webview
 
-Question: can Lumen log in to the owner's personal Udemy account (`www.udemy.com`) inside a Tauri webview and read the
+Question: can LumenGet log in to the owner's personal Udemy account (`www.udemy.com`) inside a Tauri webview and read the
 session cookies, instead of asking the user to paste them?
 
 ## What exists

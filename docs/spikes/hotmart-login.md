@@ -1,6 +1,6 @@
 # Spike: Hotmart login
 
-Question: what credential does Hotmart need, and can Lumen obtain it from an in-app webview instead of asking the user
+Question: what credential does Hotmart need, and can LumenGet obtain it from an in-app webview instead of asking the user
 to paste it?
 
 ## What the credential is
@@ -17,7 +17,7 @@ Taken from the previous Go implementation (its Hotmart login and API headers) an
 - Validation in the Go code: `GET api-sec-vlc.hotmart.com/security/oauth/check_token?token=<value>`; when that fails,
   `GET api-hub.cb.hotmart.com/club-drive-api/rest/v2/purchase/?archived=UNARCHIVED` must return a `data` array.
 - There is **no token refresh** anywhere in the Go code. An expired token surfaces as HTTP 401/403 and the user has to
-  log in again (Lumen reports `session_expired`).
+  log in again (LumenGet reports `session_expired`).
 
 ## Can a webview yield it?
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Calm inline detail for a platform that is not in Lumen yet.
+  // Calm inline detail for a platform that is not in LumenGet yet.
   import { t } from "../../lib/i18n/index.svelte";
   import type { Platform } from "../../lib/platforms";
   import PlatformStage from "./PlatformStage.svelte";

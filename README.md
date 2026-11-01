@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/lumen-logo.svg" alt="Lumen" width="160">
+  <img src="assets/lumen-logo.svg" alt="LumenGet" width="160">
 </p>
 
-<h1 align="center">Lumen</h1>
+<h1 align="center">LumenGet</h1>
 
 <p align="center">
   Download your purchased courses and watch them offline in a fast, focused classroom.
@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/youtube-library.png" alt="Lumen library" width="860">
+  <img src="docs/images/youtube-library.png" alt="LumenGet library" width="860">
 </p>
 
 ## What it does
@@ -34,11 +34,11 @@
   (moved to the system trash by default, with a separate confirmation for permanent deletion).
   Deleting only removes files from your computer; it never touches your purchase or account.
 - **Stay up to date**: *Ajustes → Actualizaciones* checks the GitHub releases and shows the notes and the right installer for your system.
-  The repository is public, so no token is needed; an optional read-only token can be saved if you point Lumen to a private fork.
+  The repository is public, so no token is needed; an optional read-only token can be saved if you point LumenGet to a private fork.
 
 ## Harbiz workouts
 
-Sign in with your Harbiz email and password (Lumen keeps only a session token, never the password). Your agenda, past and scheduled, is saved as
+Sign in with your Harbiz email and password (LumenGet keeps only a session token, never the password). Your agenda, past and scheduled, is saved as
 
 ```
 Harbiz/Harbiz Training/<YYYY-MM>/<date - workout title>/
@@ -53,7 +53,7 @@ Harbiz/Harbiz Training/<YYYY-MM>/<date - workout title>/
 - **Coherent**: each video is tied to its exercise by name. If the coach renames, reorders or swaps the video of an exercise, the old file moves to a hidden `.replaced/` folder (nothing is deleted) and the right one is fetched. A video shared by several exercises is downloaded once.
 - **Honest reports**: a video that no longer exists on YouTube is a warning with the reason and the full link, not a failure; after three YouTube bot checks in a row the run stops with one clear message instead of hundreds of errors.
 - **In the player** (top corners of the video): the exercise name and its instructions on the left (a button hides them); on the right the workout timer and `Serie 2/3 · 10 reps` with a check button to mark the set and move to the next one. The timer counts only while the video plays, and an exercise with sets left repeats its video instead of moving on.
-- **Music** (Linux): when Spotify is open, a round note button appears above the player controls. It opens a small panel with the album cover, the song, how far along it is (drag the bar to skip to another point), shuffle / previous / play-pause / next / repeat, and the volume. Lumen only talks to your local Spotify through MPRIS: no account, no network, nothing is stored. Keys typed in the panel never reach the video. It is not available on Windows yet.
+- **Music** (Linux): when Spotify is open, a round note button appears above the player controls. It opens a small panel with the album cover, the song, how far along it is (drag the bar to skip to another point), shuffle / previous / play-pause / next / repeat, and the volume. LumenGet only talks to your local Spotify through MPRIS: no account, no network, nothing is stored. Keys typed in the panel never reach the video. It is not available on Windows yet.
 - **Videos YouTube only serves at 360p** (the ones the default yt-dlp client cannot open) are downloaded at 360p through yt-dlp's android client; a video that is really gone is still a warning.
 
 ## Keyboard shortcuts
@@ -86,7 +86,7 @@ Installers are published as GitHub releases ([latest](https://github.com/MAlexVR
 
 On Linux, video downloads use the system **`yt-dlp`** (and **`ffmpeg`**, recommended for merging audio and video):
 `sudo dnf install yt-dlp ffmpeg-free` (Fedora; full `ffmpeg` needs RPM Fusion) or `sudo apt install yt-dlp ffmpeg`.
-Lumen looks for them next to the app first and then on your `PATH`. Third-party components: [`THIRD_PARTY.md`](THIRD_PARTY.md).
+LumenGet looks for them next to the app first and then on your `PATH`. Third-party components: [`THIRD_PARTY.md`](THIRD_PARTY.md).
 
 ## Screenshots
 
@@ -102,7 +102,7 @@ Contrast follows WCAG 2.2 AA. The full palette and rules are in [`docs/PROPOSAL.
 
 ## What changed from vintecinco_dl
 
-Lumen is a Rust rewrite of [vintecinco_dl](https://github.com/owbryd/vintecinco_dl) (Go + Wails).
+LumenGet is a Rust rewrite of [vintecinco_dl](https://github.com/owbryd/vintecinco_dl) (Go + Wails).
 
 - **Rust workspace + Tauri 2** with a Svelte 5 UI, one code base for Windows 11 and Linux. The previous Go code remains available in the git history.
 - **Skool** reworked against the real site: course pages are read from HTML (the JSON endpoints are blocked by the WAF),

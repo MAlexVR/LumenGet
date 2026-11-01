@@ -3,7 +3,7 @@ name = "lumen"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Lumen: offline course classroom"
+description = "LumenGet: offline course classroom"
 
 [lints]
 workspace = true

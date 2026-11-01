@@ -66,7 +66,7 @@ pub struct AppInfo {
 
 pub fn app_info_value() -> AppInfo {
     AppInfo {
-        name: "Lumen",
+        name: "LumenGet",
         version: env!("CARGO_PKG_VERSION"),
     }
 }
@@ -167,7 +167,7 @@ fn pick_folder(app: &AppHandle, start: Option<PathBuf>) -> Option<String> {
     let mut dialog = app
         .dialog()
         .file()
-        .set_title("Carpeta de descargas de Lumen");
+        .set_title("Carpeta de descargas de LumenGet");
     if let Some(dir) = start {
         dialog = dialog.set_directory(dir);
     }
@@ -1299,7 +1299,7 @@ mod tests {
     #[test]
     fn app_info_reports_name_and_version() {
         let info = app_info_value();
-        assert_eq!(info.name, "Lumen");
+        assert_eq!(info.name, "LumenGet");
         assert_eq!(info.version, env!("CARGO_PKG_VERSION"));
     }
 

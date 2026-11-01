@@ -39,9 +39,9 @@
   aria-label={t("nav_main")}
   onmouseleave={() => (peek = false)}
 >
-  <a class="brand" href="#/" aria-label="Lumen">
+  <a class="brand" href="#/" aria-label="LumenGet">
     <BrandMark size={28} />
-    <span class="wordmark">Lumen</span>
+    <span class="wordmark">LumenGet</span>
   </a>
   <ul>
     {#each items as item (item.id)}

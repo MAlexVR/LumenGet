@@ -1,7 +1,13 @@
 # Changelog
 
-All notable changes to Lumen. Format based on [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
+All notable changes to LumenGet. Format based on [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 Each release's notes and its git tag message are taken from the matching section (see `scripts/changelog-section.sh`).
+
+## [Unreleased]
+
+### Changed
+
+- The app is now called **LumenGet**: window title, side-menu wordmark, texts, README and docs. The installer and package file names, the program name (`lumen`), the library folder and your saved data keep their names, so updates and your library are not affected.
 
 ## [0.6.7] - 2026-11-01
 

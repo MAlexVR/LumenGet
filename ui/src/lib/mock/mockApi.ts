@@ -135,7 +135,7 @@ export function createMockApi(): Api {
   };
   return {
     mode: "mock",
-    appInfo: async () => ({ name: "Lumen", version: "preview" }),
+    appInfo: async () => ({ name: "LumenGet", version: "preview" }),
     // `?media=http://127.0.0.1:8765` points the preview at a local file server.
     mediaBase: async () => params.get("media") ?? "",
     defaultRoot: async () => "/home/usuario/Lumen",

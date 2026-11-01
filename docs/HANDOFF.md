@@ -2,7 +2,7 @@
 
 Read `AGENTS.md` first (rules and style are normative). Contracts and evidence per task: `odd/tasks/lumen.md`.
 
-## State (Lumen 0.3.0)
+## State (LumenGet 0.3.0)
 
 Built and verified on Linux (Fedora, WebKitGTK) with fixtures and fakes; **not verified**: live Skool/Hotmart/Pluralsight/YouTube/Udemy (Golden Life was checked live, see below), the native folder dialog, the real trash UI, Windows 11.
 

@@ -35,7 +35,7 @@
 
   <section class="row" aria-labelledby="set-about">
     <h2 id="set-about" class="eyebrow">{t("settings_about")}</h2>
-    <p class="hint">Lumen <span class="num">{app.version}</span></p>
+    <p class="hint">LumenGet <span class="num">{app.version}</span></p>
   </section>
 </div>
 

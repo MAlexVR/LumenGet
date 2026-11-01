@@ -1,4 +1,4 @@
-# AGENTS.md — how to work on Lumen
+# AGENTS.md — how to work on LumenGet
 
 Read this first. It applies to any coding agent (Codex, Claude Code, others). The owner speaks Spanish; keep chat answers short and in Spanish. Everything written into the repository (code, comments, docs, commit messages, UI keys) is **English**, except user-facing UI strings which go through i18n (es first, en second).
 

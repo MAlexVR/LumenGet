@@ -1,4 +1,4 @@
-// Download platforms Lumen offers. Logos are original artwork (resized
+// Download platforms LumenGet offers. Logos are original artwork (resized
 // copies, or the official SVG); each sits on a stage whose background
 // matches the artwork's own edge so it never shows as a box on black. Brand
 // colour appears only through the logos and their stages, never as UI accent.
