@@ -26,6 +26,7 @@ import type {
   HarbizCourse,
   ExercisePlan,
   NowPlaying,
+  RepeatMode,
   Library,
   LoginOutcome,
   PlatformGroup,
@@ -94,6 +95,8 @@ export interface Api {
   mediaPrevious(): Promise<void>;
   /** `volume` is 0 to 1. */
   mediaSetVolume(volume: number): Promise<void>;
+  mediaSetShuffle(enabled: boolean): Promise<void>;
+  mediaSetRepeat(mode: RepeatMode): Promise<void>;
   /** Pause and resume work for a download of any platform: ids are unique across them. */
   downloadPause(id: string): Promise<boolean>;
   downloadResume(id: string): Promise<boolean>;
@@ -304,6 +307,8 @@ function tauriApi(): Api {
     mediaNext: () => call("media_next"),
     mediaPrevious: () => call("media_previous"),
     mediaSetVolume: (volume) => call("media_set_volume", { volume }),
+    mediaSetShuffle: (enabled) => call("media_set_shuffle", { enabled }),
+    mediaSetRepeat: (mode) => call("media_set_repeat", { mode }),
     downloadPause: (id) => call("download_pause", { id }),
     downloadResume: (id) => call("download_resume", { id }),
     updateCheck: () => call("update_check"),

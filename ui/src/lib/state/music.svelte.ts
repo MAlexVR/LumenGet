@@ -5,11 +5,12 @@ import { POLL_MS } from "../logic/music";
 import { app } from "./app.svelte";
 import type { NowPlaying } from "../types";
 
-export const music = $state<{ now: NowPlaying | null }>({ now: null });
+export const music = $state<{ now: NowPlaying | null; readAt: number }>({ now: null, readAt: 0 });
 
 async function refresh(): Promise<void> {
   try {
     music.now = (await app.api?.mediaNowPlaying()) ?? null;
+    music.readAt = performance.now();
   } catch {
     // An unreachable bus is the same as no Spotify: the control hides.
     music.now = null;

@@ -7,7 +7,7 @@ Each release's notes and its git tag message are taken from the matching section
 
 ### Added
 
-- A **music control** in the workout player (Linux): with Spotify open, a note button above the controls opens a panel with the current song, previous / play-pause / next and the volume. It talks to your local Spotify over MPRIS (no account, no network) and keys typed in it never reach the video. Not available on Windows yet.
+- A **music control** in the workout player (Linux): with Spotify open, a note button above the controls opens a panel with the album cover, the song and artist, a bar with the time played and the length, shuffle / previous / play-pause / next / repeat, and the volume with a mute button. It talks to your local Spotify over MPRIS (no account, no network) and keys typed in it never reach the video. Not available on Windows yet.
 - A **stop** button in the player controls: it halts the video and leaves it paused at the start (*play from the start* still restarts and plays).
 
 ### Changed

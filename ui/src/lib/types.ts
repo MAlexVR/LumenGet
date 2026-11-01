@@ -196,11 +196,21 @@ export interface ExercisePlan {
   notes: string;
 }
 
+/** What Spotify does when a song or the list ends. */
+export type RepeatMode = "none" | "track" | "playlist";
+
 /** What the owner's Spotify plays; `null` from the API when it is closed. */
 export interface NowPlaying {
   title: string;
   artist: string;
+  /** The album cover (an https link), when Spotify gives one. */
+  artUrl: string | null;
   playing: boolean;
+  /** Seconds into the song, as of the last reading. */
+  positionSecs: number | null;
+  lengthSecs: number | null;
+  shuffle: boolean;
+  repeat: RepeatMode;
   /** 0 to 1; `null` when the player does not expose its volume. */
   volume: number | null;
   canPrevious: boolean;
