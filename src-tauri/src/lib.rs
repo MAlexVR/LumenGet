@@ -966,6 +966,23 @@ async fn media_previous(music: State<'_, Arc<MusicService>>) -> Result<(), Music
     music.previous().await
 }
 
+#[tauri::command]
+async fn media_set_shuffle(
+    enabled: bool,
+    music: State<'_, Arc<MusicService>>,
+) -> Result<(), MusicCommandError> {
+    music.set_shuffle(enabled).await
+}
+
+/// `mode` is `none`, `track` or `playlist`.
+#[tauri::command]
+async fn media_set_repeat(
+    mode: lumen_core::RepeatMode,
+    music: State<'_, Arc<MusicService>>,
+) -> Result<(), MusicCommandError> {
+    music.set_repeat(mode).await
+}
+
 /// `volume` is 0 to 1.
 #[tauri::command]
 async fn media_set_volume(
@@ -1169,6 +1186,8 @@ pub fn run() {
             media_next,
             media_previous,
             media_set_volume,
+            media_set_shuffle,
+            media_set_repeat,
             progress_group,
             progress_set_watched,
             progress_set_last,

@@ -17,7 +17,7 @@ pub use model::{
     Collection, Course, Group, GroupStatus, Lesson, Library, LibraryPlatform, PlatformLibrary,
     Resource, ResourceKind, Section,
 };
-pub use music::{validated_volume, MusicControl, MusicError, NowPlaying};
+pub use music::{validated_volume, MusicControl, MusicError, NowPlaying, RepeatMode};
 pub use platform::{
     CancelFlag, CoursePlatform, CourseProgressSink, DownloadOptions, NullSink, PlatformError,
     PlatformGroup,

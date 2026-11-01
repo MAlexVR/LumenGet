@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 
 use async_trait::async_trait;
-use lumen_core::{validated_volume, MusicControl, MusicError, NowPlaying};
+use lumen_core::{validated_volume, MusicControl, MusicError, NowPlaying, RepeatMode};
 use tokio::sync::OnceCell;
 use zbus::proxy::CacheProperties;
 use zbus::zvariant::OwnedValue;
 use zbus::Connection;
 
-use crate::parse::now_playing;
+use crate::parse::{now_playing, Reading};
 
 /// Spotify's bus name; other players (a browser, Lumen's own webview) are
 /// never controlled, so a workout cannot pause the wrong thing.
@@ -29,6 +29,16 @@ trait Player {
     fn volume(&self) -> zbus::Result<f64>;
     #[zbus(property)]
     fn set_volume(&self, volume: f64) -> zbus::Result<()>;
+    #[zbus(property)]
+    fn position(&self) -> zbus::Result<i64>;
+    #[zbus(property)]
+    fn shuffle(&self) -> zbus::Result<bool>;
+    #[zbus(property)]
+    fn set_shuffle(&self, enabled: bool) -> zbus::Result<()>;
+    #[zbus(property)]
+    fn loop_status(&self) -> zbus::Result<String>;
+    #[zbus(property)]
+    fn set_loop_status(&self, status: &str) -> zbus::Result<()>;
     #[zbus(property)]
     fn can_go_next(&self) -> zbus::Result<bool>;
     #[zbus(property)]
@@ -94,12 +104,18 @@ impl MusicControl for MprisSpotify {
         };
         let status = player.playback_status().await.map_err(|e| failed(&e))?;
         let metadata = player.metadata().await.map_err(|e| failed(&e))?;
+        let loop_status = player.loop_status().await.unwrap_or_default();
         Ok(Some(now_playing(
-            &status,
-            player.volume().await.ok(),
+            &Reading {
+                status: &status,
+                volume: player.volume().await.ok(),
+                position_us: player.position().await.ok(),
+                shuffle: player.shuffle().await.unwrap_or(false),
+                loop_status: &loop_status,
+                can_previous: player.can_go_previous().await.unwrap_or(false),
+                can_next: player.can_go_next().await.unwrap_or(false),
+            },
             &metadata,
-            player.can_go_previous().await.unwrap_or(false),
-            player.can_go_next().await.unwrap_or(false),
         )))
     }
 
@@ -131,6 +147,27 @@ impl MusicControl for MprisSpotify {
             .await
             .map_err(|e| failed(&e))
     }
+
+    async fn set_shuffle(&self, enabled: bool) -> Result<(), MusicError> {
+        self.running()
+            .await?
+            .set_shuffle(enabled)
+            .await
+            .map_err(|e| failed(&e))
+    }
+
+    async fn set_repeat(&self, mode: RepeatMode) -> Result<(), MusicError> {
+        let status = match mode {
+            RepeatMode::None => "None",
+            RepeatMode::Track => "Track",
+            RepeatMode::Playlist => "Playlist",
+        };
+        self.running()
+            .await?
+            .set_loop_status(status)
+            .await
+            .map_err(|e| failed(&e))
+    }
 }
 
 #[cfg(test)]
@@ -151,5 +188,45 @@ mod tests {
         let now = MprisSpotify::new().now_playing().await.unwrap();
         println!("{now:?}");
         assert!(now.is_some(), "open Spotify first");
+    }
+
+    /// Flips shuffle and repeat on the owner's Spotify and puts them back at once.
+    /// `cargo test -p lumen-mpris -- --ignored --nocapture round_trip`
+    #[tokio::test]
+    #[ignore = "briefly changes shuffle and repeat on the running Spotify"]
+    async fn shuffle_and_repeat_round_trip_on_the_real_spotify() {
+        let spotify = MprisSpotify::new();
+        let before = spotify
+            .now_playing()
+            .await
+            .unwrap()
+            .expect("open Spotify first");
+        let (flipped_shuffle, flipped_repeat) = (
+            !before.shuffle,
+            if before.repeat == RepeatMode::Playlist {
+                RepeatMode::None
+            } else {
+                RepeatMode::Playlist
+            },
+        );
+        let changed = async {
+            spotify.set_shuffle(flipped_shuffle).await?;
+            spotify.set_repeat(flipped_repeat).await?;
+            tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+            spotify.now_playing().await
+        }
+        .await;
+        // Always put the owner's settings back, whatever happened above.
+        let restored_shuffle = spotify.set_shuffle(before.shuffle).await;
+        let restored_repeat = spotify.set_repeat(before.repeat).await;
+        let after = changed.unwrap().unwrap();
+        println!(
+            "flipped: shuffle {} repeat {:?}",
+            after.shuffle, after.repeat
+        );
+        assert_eq!(after.shuffle, flipped_shuffle);
+        assert_eq!(after.repeat, flipped_repeat);
+        restored_shuffle.unwrap();
+        restored_repeat.unwrap();
     }
 }

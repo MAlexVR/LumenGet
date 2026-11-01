@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use lumen_core::{MusicControl, MusicError, NowPlaying};
+use lumen_core::{MusicControl, MusicError, NowPlaying, RepeatMode};
 
 /// The music control on a system without MPRIS: Spotify is never found, so
 /// the player's control stays hidden.
@@ -25,6 +25,12 @@ impl MusicControl for NoMusicPlayer {
         lumen_core::validated_volume(volume)?;
         Err(MusicError::Unavailable)
     }
+    async fn set_shuffle(&self, _enabled: bool) -> Result<(), MusicError> {
+        Err(MusicError::Unavailable)
+    }
+    async fn set_repeat(&self, _mode: RepeatMode) -> Result<(), MusicError> {
+        Err(MusicError::Unavailable)
+    }
 }
 
 #[cfg(test)]
@@ -38,5 +44,10 @@ mod tests {
         assert_eq!(none.play_pause().await, Err(MusicError::Unavailable));
         assert_eq!(none.set_volume(0.5).await, Err(MusicError::Unavailable));
         assert_eq!(none.set_volume(2.0).await, Err(MusicError::InvalidVolume));
+        assert_eq!(none.set_shuffle(true).await, Err(MusicError::Unavailable));
+        assert_eq!(
+            none.set_repeat(RepeatMode::Track).await,
+            Err(MusicError::Unavailable)
+        );
     }
 }

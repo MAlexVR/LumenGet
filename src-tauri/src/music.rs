@@ -3,7 +3,7 @@
 
 use std::sync::Arc;
 
-use lumen_core::{validated_volume, MusicControl, MusicError, NowPlaying};
+use lumen_core::{validated_volume, MusicControl, MusicError, NowPlaying, RepeatMode};
 use serde::Serialize;
 
 /// Stable machine-readable error codes for the UI.
@@ -66,6 +66,14 @@ impl MusicService {
     pub async fn set_volume(&self, volume: f64) -> Result<(), MusicCommandError> {
         Ok(self.control.set_volume(validated_volume(volume)?).await?)
     }
+
+    pub async fn set_shuffle(&self, enabled: bool) -> Result<(), MusicCommandError> {
+        Ok(self.control.set_shuffle(enabled).await?)
+    }
+
+    pub async fn set_repeat(&self, mode: RepeatMode) -> Result<(), MusicCommandError> {
+        Ok(self.control.set_repeat(mode).await?)
+    }
 }
 
 #[cfg(test)]
@@ -111,13 +119,24 @@ mod tests {
         async fn set_volume(&self, volume: f64) -> Result<(), MusicError> {
             self.log(&format!("volume {volume}"))
         }
+        async fn set_shuffle(&self, enabled: bool) -> Result<(), MusicError> {
+            self.log(&format!("shuffle {enabled}"))
+        }
+        async fn set_repeat(&self, mode: RepeatMode) -> Result<(), MusicError> {
+            self.log(&format!("repeat {mode:?}"))
+        }
     }
 
     fn song() -> NowPlaying {
         NowPlaying {
             title: "Song".into(),
             artist: "Band".into(),
+            art_url: None,
             playing: true,
+            position_secs: Some(12.0),
+            length_secs: Some(200.0),
+            shuffle: false,
+            repeat: RepeatMode::None,
             volume: Some(0.5),
             can_previous: true,
             can_next: true,
@@ -150,6 +169,17 @@ mod tests {
         assert_eq!(
             *fake.calls.lock().unwrap(),
             ["previous", "play_pause", "next", "volume 0.25"]
+        );
+    }
+
+    #[tokio::test]
+    async fn shuffle_and_repeat_reach_the_player() {
+        let (svc, fake) = service(Some(song()));
+        svc.set_shuffle(true).await.unwrap();
+        svc.set_repeat(RepeatMode::Track).await.unwrap();
+        assert_eq!(
+            *fake.calls.lock().unwrap(),
+            ["shuffle true", "repeat Track"]
         );
     }
 
