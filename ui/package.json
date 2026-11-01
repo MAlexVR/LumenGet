@@ -1,7 +1,7 @@
 {
   "name": "lumen-ui",
   "private": true,
-  "version": "0.6.6",
+  "version": "0.6.7",
   "type": "module",
   "scripts": {
     "dev": "vite --port 1420 --strictPort",

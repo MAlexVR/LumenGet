@@ -3,7 +3,7 @@
 All notable changes to Lumen. Format based on [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 Each release's notes and its git tag message are taken from the matching section (see `scripts/changelog-section.sh`).
 
-## [Unreleased]
+## [0.6.7] - 2026-11-01
 
 ### Added
 
