@@ -966,6 +966,15 @@ async fn media_previous(music: State<'_, Arc<MusicService>>) -> Result<(), Music
     music.previous().await
 }
 
+/// Jumps to `position` seconds into the song now playing.
+#[tauri::command]
+async fn media_seek(
+    position: f64,
+    music: State<'_, Arc<MusicService>>,
+) -> Result<(), MusicCommandError> {
+    music.seek(position).await
+}
+
 #[tauri::command]
 async fn media_set_shuffle(
     enabled: bool,
@@ -1186,6 +1195,7 @@ pub fn run() {
             media_next,
             media_previous,
             media_set_volume,
+            media_seek,
             media_set_shuffle,
             media_set_repeat,
             progress_group,

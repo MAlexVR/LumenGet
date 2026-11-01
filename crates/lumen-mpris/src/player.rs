@@ -1,13 +1,15 @@
 use std::collections::HashMap;
 
 use async_trait::async_trait;
-use lumen_core::{validated_volume, MusicControl, MusicError, NowPlaying, RepeatMode};
+use lumen_core::{
+    validated_position, validated_volume, MusicControl, MusicError, NowPlaying, RepeatMode,
+};
 use tokio::sync::OnceCell;
 use zbus::proxy::CacheProperties;
-use zbus::zvariant::OwnedValue;
+use zbus::zvariant::{ObjectPath, OwnedValue};
 use zbus::Connection;
 
-use crate::parse::{now_playing, Reading};
+use crate::parse::{now_playing, track_id, Reading};
 
 /// Spotify's bus name; other players (a browser, Lumen's own webview) are
 /// never controlled, so a workout cannot pause the wrong thing.
@@ -20,6 +22,7 @@ const SPOTIFY: &str = "org.mpris.MediaPlayer2.spotify";
 trait Player {
     fn play_pause(&self) -> zbus::Result<()>;
     fn next(&self) -> zbus::Result<()>;
+    fn set_position(&self, track_id: &ObjectPath<'_>, position: i64) -> zbus::Result<()>;
     fn previous(&self) -> zbus::Result<()>;
     #[zbus(property)]
     fn playback_status(&self) -> zbus::Result<String>;
@@ -39,6 +42,8 @@ trait Player {
     fn loop_status(&self) -> zbus::Result<String>;
     #[zbus(property)]
     fn set_loop_status(&self, status: &str) -> zbus::Result<()>;
+    #[zbus(property)]
+    fn can_seek(&self) -> zbus::Result<bool>;
     #[zbus(property)]
     fn can_go_next(&self) -> zbus::Result<bool>;
     #[zbus(property)]
@@ -114,6 +119,7 @@ impl MusicControl for MprisSpotify {
                 loop_status: &loop_status,
                 can_previous: player.can_go_previous().await.unwrap_or(false),
                 can_next: player.can_go_next().await.unwrap_or(false),
+                can_seek: player.can_seek().await.unwrap_or(false),
             },
             &metadata,
         )))
@@ -144,6 +150,20 @@ impl MusicControl for MprisSpotify {
         self.running()
             .await?
             .set_volume(volume)
+            .await
+            .map_err(|e| failed(&e))
+    }
+
+    async fn seek(&self, position_secs: f64) -> Result<(), MusicError> {
+        let seconds = validated_position(position_secs)?;
+        let player = self.running().await?;
+        let metadata = player.metadata().await.map_err(|e| failed(&e))?;
+        let track = track_id(&metadata)
+            .ok_or_else(|| MusicError::Failed("no song is loaded".to_string()))?;
+        // MPRIS counts in microseconds.
+        let micros = (seconds * 1_000_000.0) as i64;
+        player
+            .set_position(&track, micros)
             .await
             .map_err(|e| failed(&e))
     }
@@ -228,5 +248,37 @@ mod tests {
         assert_eq!(after.repeat, flipped_repeat);
         restored_shuffle.unwrap();
         restored_repeat.unwrap();
+    }
+
+    /// Skips the running song to another point and puts it back where it was.
+    /// `cargo test -p lumen-mpris -- --ignored --nocapture seek_round_trip`
+    #[tokio::test]
+    #[ignore = "briefly moves the position of the song playing in Spotify"]
+    async fn seek_round_trip_on_the_real_spotify() {
+        let spotify = MprisSpotify::new();
+        let before = spotify
+            .now_playing()
+            .await
+            .unwrap()
+            .expect("open Spotify first");
+        assert!(before.can_seek, "this song cannot be skipped");
+        let origin = before.position_secs.unwrap_or(0.0);
+        let target = if origin > 60.0 {
+            origin - 30.0
+        } else {
+            origin + 30.0
+        };
+        let moved = async {
+            spotify.seek(target).await?;
+            tokio::time::sleep(std::time::Duration::from_millis(400)).await;
+            spotify.now_playing().await
+        }
+        .await;
+        // Always put the song back, whatever happened above.
+        let restored = spotify.seek(origin).await;
+        let at = moved.unwrap().unwrap().position_secs.unwrap();
+        println!("origin {origin:.1} s, moved to {at:.1} s (asked {target:.1} s)");
+        assert!((at - target).abs() < 3.0, "asked {target}, got {at}");
+        restored.unwrap();
     }
 }

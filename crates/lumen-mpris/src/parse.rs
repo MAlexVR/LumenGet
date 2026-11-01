@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 
 use lumen_core::{NowPlaying, RepeatMode};
-use zbus::zvariant::{OwnedValue, Value};
+use zbus::zvariant::{OwnedObjectPath, OwnedValue, Value};
 
 /// `xesam:artist` is a list of names; a player that sends one string is accepted too.
 fn artist(metadata: &HashMap<String, OwnedValue>) -> String {
@@ -42,6 +42,7 @@ pub(crate) struct Reading<'a> {
     pub loop_status: &'a str,
     pub can_previous: bool,
     pub can_next: bool,
+    pub can_seek: bool,
 }
 
 /// Microseconds as seconds; a negative count is nonsense and is dropped.
@@ -66,6 +67,16 @@ fn art_url(metadata: &HashMap<String, OwnedValue>) -> Option<String> {
     url.starts_with("https://").then(|| url.to_string())
 }
 
+/// The id `SetPosition` asks for. MPRIS says it is an object path, but Spotify
+/// sends it as text holding that path, so both are accepted.
+pub(crate) fn track_id(metadata: &HashMap<String, OwnedValue>) -> Option<OwnedObjectPath> {
+    let value = &**metadata.get("mpris:trackid")?;
+    match value {
+        Value::ObjectPath(path) => Some(OwnedObjectPath::from(path.clone())),
+        other => OwnedObjectPath::try_from(<&str>::try_from(other).ok()?.to_string()).ok(),
+    }
+}
+
 fn repeat(loop_status: &str) -> RepeatMode {
     match loop_status {
         "Track" => RepeatMode::Track,
@@ -87,6 +98,7 @@ pub(crate) fn now_playing(
         length_secs: length_secs(metadata),
         shuffle: reading.shuffle,
         repeat: repeat(reading.loop_status),
+        can_seek: reading.can_seek,
         volume: reading.volume,
         can_previous: reading.can_previous,
         can_next: reading.can_next,
@@ -119,6 +131,7 @@ mod tests {
             loop_status: "None",
             can_previous: false,
             can_next: false,
+            can_seek: false,
         }
     }
 
@@ -224,6 +237,38 @@ mod tests {
         };
         let now = now_playing(&at, &meta);
         assert_eq!((now.position_secs, now.length_secs), (None, None));
+    }
+
+    #[test]
+    fn whether_the_song_can_be_skipped_comes_from_the_player() {
+        let meta = metadata(vec![]);
+        assert!(!now_playing(&reading("Playing"), &meta).can_seek);
+        let seekable = Reading {
+            can_seek: true,
+            ..reading("Playing")
+        };
+        assert!(now_playing(&seekable, &meta).can_seek);
+    }
+
+    #[test]
+    fn the_track_id_is_read_whether_the_player_sends_text_or_an_object_path() {
+        let path = "/com/spotify/track/3YeBEeAkypUkkQSCLRawEd";
+        let text = metadata(vec![("mpris:trackid", Value::from(path))]);
+        let object = metadata(vec![(
+            "mpris:trackid",
+            Value::from(zbus::zvariant::ObjectPath::try_from(path).unwrap()),
+        )]);
+        assert_eq!(track_id(&text).unwrap().as_str(), path);
+        assert_eq!(track_id(&object).unwrap().as_str(), path);
+    }
+
+    #[test]
+    fn a_missing_or_malformed_track_id_is_none() {
+        assert!(track_id(&metadata(vec![])).is_none());
+        let bad = metadata(vec![("mpris:trackid", Value::from("not a path"))]);
+        assert!(track_id(&bad).is_none());
+        let number = metadata(vec![("mpris:trackid", Value::from(7_u32))]);
+        assert!(track_id(&number).is_none());
     }
 
     #[test]

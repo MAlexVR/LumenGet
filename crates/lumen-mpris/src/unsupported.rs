@@ -25,6 +25,10 @@ impl MusicControl for NoMusicPlayer {
         lumen_core::validated_volume(volume)?;
         Err(MusicError::Unavailable)
     }
+    async fn seek(&self, position_secs: f64) -> Result<(), MusicError> {
+        lumen_core::validated_position(position_secs)?;
+        Err(MusicError::Unavailable)
+    }
     async fn set_shuffle(&self, _enabled: bool) -> Result<(), MusicError> {
         Err(MusicError::Unavailable)
     }
@@ -44,6 +48,8 @@ mod tests {
         assert_eq!(none.play_pause().await, Err(MusicError::Unavailable));
         assert_eq!(none.set_volume(0.5).await, Err(MusicError::Unavailable));
         assert_eq!(none.set_volume(2.0).await, Err(MusicError::InvalidVolume));
+        assert_eq!(none.seek(30.0).await, Err(MusicError::Unavailable));
+        assert_eq!(none.seek(-1.0).await, Err(MusicError::InvalidPosition));
         assert_eq!(none.set_shuffle(true).await, Err(MusicError::Unavailable));
         assert_eq!(
             none.set_repeat(RepeatMode::Track).await,

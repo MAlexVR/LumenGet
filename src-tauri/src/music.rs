@@ -3,7 +3,9 @@
 
 use std::sync::Arc;
 
-use lumen_core::{validated_volume, MusicControl, MusicError, NowPlaying, RepeatMode};
+use lumen_core::{
+    validated_position, validated_volume, MusicControl, MusicError, NowPlaying, RepeatMode,
+};
 use serde::Serialize;
 
 /// Stable machine-readable error codes for the UI.
@@ -13,6 +15,7 @@ pub enum MusicCode {
     /// Spotify is not running.
     Unavailable,
     InvalidVolume,
+    InvalidPosition,
     Failed,
 }
 
@@ -29,6 +32,7 @@ impl From<MusicError> for MusicCommandError {
         let code = match e {
             MusicError::Unavailable => MusicCode::Unavailable,
             MusicError::InvalidVolume => MusicCode::InvalidVolume,
+            MusicError::InvalidPosition => MusicCode::InvalidPosition,
             MusicError::Failed(_) => MusicCode::Failed,
         };
         Self {
@@ -65,6 +69,13 @@ impl MusicService {
 
     pub async fn set_volume(&self, volume: f64) -> Result<(), MusicCommandError> {
         Ok(self.control.set_volume(validated_volume(volume)?).await?)
+    }
+
+    pub async fn seek(&self, position_secs: f64) -> Result<(), MusicCommandError> {
+        Ok(self
+            .control
+            .seek(validated_position(position_secs)?)
+            .await?)
     }
 
     pub async fn set_shuffle(&self, enabled: bool) -> Result<(), MusicCommandError> {
@@ -119,6 +130,9 @@ mod tests {
         async fn set_volume(&self, volume: f64) -> Result<(), MusicError> {
             self.log(&format!("volume {volume}"))
         }
+        async fn seek(&self, position_secs: f64) -> Result<(), MusicError> {
+            self.log(&format!("seek {position_secs}"))
+        }
         async fn set_shuffle(&self, enabled: bool) -> Result<(), MusicError> {
             self.log(&format!("shuffle {enabled}"))
         }
@@ -137,6 +151,7 @@ mod tests {
             length_secs: Some(200.0),
             shuffle: false,
             repeat: RepeatMode::None,
+            can_seek: true,
             volume: Some(0.5),
             can_previous: true,
             can_next: true,
@@ -170,6 +185,23 @@ mod tests {
             *fake.calls.lock().unwrap(),
             ["previous", "play_pause", "next", "volume 0.25"]
         );
+    }
+
+    #[tokio::test]
+    async fn a_jump_reaches_the_player() {
+        let (svc, fake) = service(Some(song()));
+        svc.seek(131.5).await.unwrap();
+        assert_eq!(*fake.calls.lock().unwrap(), ["seek 131.5"]);
+    }
+
+    #[tokio::test]
+    async fn a_bad_position_never_reaches_the_player() {
+        let (svc, fake) = service(Some(song()));
+        for position in [-1.0, f64::NAN] {
+            let err = svc.seek(position).await.unwrap_err();
+            assert_eq!(err.code, MusicCode::InvalidPosition);
+        }
+        assert!(fake.calls.lock().unwrap().is_empty());
     }
 
     #[tokio::test]

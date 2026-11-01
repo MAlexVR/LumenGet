@@ -29,6 +29,8 @@ pub struct NowPlaying {
     pub length_secs: Option<f64>,
     pub shuffle: bool,
     pub repeat: RepeatMode,
+    /// Whether the song can be skipped to another point.
+    pub can_seek: bool,
     /// 0.0 to 1.0; `None` when the player does not expose its volume.
     pub volume: Option<f64>,
     pub can_previous: bool,
@@ -41,6 +43,8 @@ pub enum MusicError {
     Unavailable,
     #[error("the volume must be a number from 0 to 1")]
     InvalidVolume,
+    #[error("the position must be a number of seconds from 0 on")]
+    InvalidPosition,
     #[error("the music player refused the command: {0}")]
     Failed(String),
 }
@@ -54,6 +58,8 @@ pub trait MusicControl: Send + Sync {
     async fn previous(&self) -> Result<(), MusicError>;
     /// `volume` is 0.0 to 1.0.
     async fn set_volume(&self, volume: f64) -> Result<(), MusicError>;
+    /// Jumps to `position_secs` within the song now playing.
+    async fn seek(&self, position_secs: f64) -> Result<(), MusicError>;
     async fn set_shuffle(&self, enabled: bool) -> Result<(), MusicError>;
     async fn set_repeat(&self, mode: RepeatMode) -> Result<(), MusicError>;
 }
@@ -67,9 +73,35 @@ pub fn validated_volume(volume: f64) -> Result<f64, MusicError> {
     }
 }
 
+/// The position a command may ask for: seconds from 0 on, never NaN or infinite.
+pub fn validated_position(seconds: f64) -> Result<f64, MusicError> {
+    if seconds.is_finite() && seconds >= 0.0 {
+        Ok(seconds)
+    } else {
+        Err(MusicError::InvalidPosition)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_position_from_zero_on_is_accepted() {
+        assert_eq!(validated_position(0.0), Ok(0.0));
+        assert_eq!(validated_position(131.5), Ok(131.5));
+    }
+
+    #[test]
+    fn a_negative_or_not_a_number_position_is_refused() {
+        for v in [-0.5, f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            assert_eq!(
+                validated_position(v),
+                Err(MusicError::InvalidPosition),
+                "{v}"
+            );
+        }
+    }
 
     #[test]
     fn a_volume_from_zero_to_one_is_accepted() {
@@ -96,6 +128,7 @@ mod tests {
             length_secs: Some(263.0),
             shuffle: true,
             repeat: RepeatMode::Playlist,
+            can_seek: true,
             volume: Some(0.5),
             can_previous: false,
             can_next: true,
@@ -109,6 +142,7 @@ mod tests {
         assert_eq!(json["lengthSecs"], 263.0);
         assert_eq!(json["shuffle"], true);
         assert_eq!(json["repeat"], "playlist");
+        assert_eq!(json["canSeek"], true);
     }
 
     #[test]
