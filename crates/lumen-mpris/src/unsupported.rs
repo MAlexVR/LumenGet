@@ -7,6 +7,14 @@ use lumen_core::{MusicControl, MusicError, NowPlaying, RepeatMode};
 #[cfg_attr(target_os = "linux", allow(dead_code))]
 pub struct NoMusicPlayer;
 
+#[cfg_attr(target_os = "linux", allow(dead_code))]
+impl NoMusicPlayer {
+    /// Same constructor as the real adapter, so callers need no platform switch.
+    pub fn new() -> Self {
+        Self
+    }
+}
+
 #[async_trait]
 impl MusicControl for NoMusicPlayer {
     async fn now_playing(&self) -> Result<Option<NowPlaying>, MusicError> {
@@ -43,7 +51,7 @@ mod tests {
 
     #[tokio::test]
     async fn no_player_is_ever_found_and_commands_say_so() {
-        let none = NoMusicPlayer;
+        let none = NoMusicPlayer::new();
         assert_eq!(none.now_playing().await, Ok(None));
         assert_eq!(none.play_pause().await, Err(MusicError::Unavailable));
         assert_eq!(none.set_volume(0.5).await, Err(MusicError::Unavailable));
