@@ -3,6 +3,16 @@
 All notable changes to Lumen. Format based on [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 Each release's notes and its git tag message are taken from the matching section (see `scripts/changelog-section.sh`).
 
+## [Unreleased]
+
+### Fixed
+
+- Harbiz exercises whose YouTube video yt-dlp refused with "This video is not available" were left out of their workout, although YouTube plays them. Lumen now retries that failure once with yt-dlp's android client, which opens them (at 360p), so those workouts download complete. Videos that really are gone are still reported as such.
+
+### Changed
+
+- A video a Harbiz workout shares with one already in your library is now linked to the existing file instead of being downloaded and stored again, also when the first workout came from an earlier update.
+
 ## [0.6.5] - 2026-10-31
 
 This is the first release since 0.4.1: it ships everything listed under 0.5.0 to 0.6.3 below. The highlights:

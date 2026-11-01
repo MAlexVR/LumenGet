@@ -27,6 +27,7 @@ use crate::planner::{
     PlannedExercise, PlannedWorkout, COURSE_TITLE, DESCRIPTION_FILE, LEGACY_WORKOUT_FILE,
     REPLACED_DIR, VIDEO_EXTS, WORKOUT_FILE,
 };
+use crate::refresh::saved_videos;
 
 /// Platform id used in reports and by the app shell.
 pub const PLATFORM_ID: &str = "harbiz";
@@ -421,7 +422,12 @@ impl WorkoutDownloader<'_> {
         let ctx = RunContext {
             total,
             finished: AtomicU32::new(0),
-            seen: Mutex::new(HashMap::new()),
+            seen: Mutex::new(
+                saved_videos(library_root)
+                    .into_iter()
+                    .map(|(id, path)| (id, Seen::Saved(path)))
+                    .collect(),
+            ),
             bot_checks: AtomicU32::new(0),
             blocked: AtomicBool::new(false),
             not_attempted: AtomicU32::new(0),
@@ -638,7 +644,7 @@ impl WorkoutDownloader<'_> {
         };
         let known = id.as_ref().and_then(|id| lock(&ctx.seen).get(id).cloned());
         match known {
-            Some(Seen::Saved(source)) => {
+            Some(Seen::Saved(source)) if source.is_file() => {
                 let target = dir.join(format!(
                     "{}.{}",
                     planned.stem,
@@ -669,7 +675,8 @@ impl WorkoutDownloader<'_> {
                 ));
                 return;
             }
-            None => {}
+            // A saved file that has since gone is fetched like a new video.
+            Some(Seen::Saved(_)) | None => {}
         }
         if ctx.blocked.load(Ordering::SeqCst) {
             ctx.not_attempted.fetch_add(1, Ordering::SeqCst);
@@ -1396,6 +1403,44 @@ mod tests {
         let one = run(&parsed(vec![first]), tmp).await;
         let two = run(&parsed(vec![second]), tmp).await;
         (one, two)
+    }
+
+    #[tokio::test]
+    async fn a_video_already_in_the_library_is_reused_by_a_later_run_without_downloading_it() {
+        let tmp = tempfile::tempdir().unwrap();
+        let (_, two) = run_twice(
+            class("w1", "2026-06-02", &[A]),
+            class("w2", "2026-07-04", &[A, B]),
+            tmp.path(),
+        )
+        .await;
+        assert_eq!(
+            two.videos.urls(),
+            [url_of(B)],
+            "only the video the library does not have is fetched"
+        );
+        let course = course_dir(tmp.path());
+        let first = course.join("2026-06/2026-06-02 - t/01. Move 0.mp4");
+        let second = final_dir(tmp.path(), "2026-07-04").join("01. Move 0.mp4");
+        assert!(second.is_file());
+        assert_eq!(
+            std::fs::metadata(&first).unwrap().len(),
+            std::fs::metadata(&second).unwrap().len()
+        );
+        assert!(two.report.issues.is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_saved_video_whose_file_is_gone_is_downloaded_again() {
+        let tmp = tempfile::tempdir().unwrap();
+        run(&parsed(vec![class("w1", "2026-06-02", &[A])]), tmp.path()).await;
+        std::fs::remove_file(course_dir(tmp.path()).join("2026-06/2026-06-02 - t/01. Move 0.mp4"))
+            .unwrap();
+        let two = run(&parsed(vec![class("w2", "2026-07-04", &[A])]), tmp.path()).await;
+        assert_eq!(two.videos.urls(), [url_of(A)]);
+        assert!(final_dir(tmp.path(), "2026-07-04")
+            .join("01. Move 0.mp4")
+            .is_file());
     }
 
     #[tokio::test]

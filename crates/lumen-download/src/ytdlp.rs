@@ -127,6 +127,31 @@ pub fn build_args(job: &VideoJob) -> Vec<String> {
     args
 }
 
+/// YouTube sometimes refuses a video to yt-dlp's default clients with "This
+/// video is not available" although the site plays it. The android client
+/// still opens it (at 360p), so that failure is worth one more attempt.
+fn needs_android_client(url: &str, message: &str) -> bool {
+    let host = url
+        .split_once("://")
+        .map_or(url, |(_, rest)| rest)
+        .split(['/', '?'])
+        .next()
+        .unwrap_or_default();
+    let youtube = host == "youtu.be" || host == "youtube.com" || host.ends_with(".youtube.com");
+    youtube && message.trim_end().ends_with("This video is not available")
+}
+
+/// `args` with the android client asked for, ahead of the `--` that ends the options.
+fn with_android_client(args: &[String]) -> Vec<String> {
+    let at = args.iter().rposition(|a| a == "--").unwrap_or(args.len());
+    let mut retry = args.to_vec();
+    retry.splice(
+        at..at,
+        ["--extractor-args", "youtube:player_client=android"].map(String::from),
+    );
+    retry
+}
+
 pub fn build_media_args(job: &MediaJob) -> Vec<String> {
     let mut args: Vec<String> = [
         "--progress",
@@ -523,8 +548,29 @@ impl VideoRunner for YtDlp {
         cancel: &CancelFlag,
         on_percent: &(dyn Fn(f32) + Send + Sync),
     ) -> Result<(), VideoError> {
-        self.run(build_args(job), &job.output_template, cancel, on_percent)
-            .await
+        let args = build_args(job);
+        let first = self
+            .run(args.clone(), &job.output_template, cancel, on_percent)
+            .await;
+        match first {
+            Err(VideoError::Failed(message)) if needs_android_client(&job.url, &message) => {
+                match self
+                    .run(
+                        with_android_client(&args),
+                        &job.output_template,
+                        cancel,
+                        on_percent,
+                    )
+                    .await
+                {
+                    Ok(()) => Ok(()),
+                    Err(VideoError::Cancelled) => Err(VideoError::Cancelled),
+                    // The first error says what the default client saw.
+                    Err(_) => Err(VideoError::Failed(message)),
+                }
+            }
+            other => other,
+        }
     }
 }
 
@@ -970,6 +1016,128 @@ echo video > "$f""#
             .unwrap();
             assert_eq!(*seen.lock().unwrap(), [5.0, 50.5, 100.0]);
             assert!(tmp.path().join("01 - Intro.mp4").is_file());
+        }
+
+        /// Fails the way yt-dlp does for a video its default client cannot
+        /// open, unless asked for the android client. Every call is logged.
+        fn android_only(dir: &Path, message: &str) -> YtDlp {
+            let log = dir.join("calls.log");
+            script(
+                dir,
+                &format!(
+                    r#"all="$*"
+{OUTPUT_FILE}
+echo called >> "{log}"
+case "$all" in
+  *youtube:player_client=android*)
+    f=$(printf '%s' "$out" | sed 's/%(ext)s/mp4/')
+    echo video > "$f" ;;
+  *) echo "{message}" >&2; exit 1 ;;
+esac"#,
+                    log = log.display()
+                ),
+            )
+        }
+
+        fn calls(dir: &Path) -> usize {
+            std::fs::read_to_string(dir.join("calls.log")).map_or(0, |log| log.lines().count())
+        }
+
+        fn job_for(dir: &Path, url: &str) -> VideoJob {
+            VideoJob {
+                url: url.into(),
+                ..job(dir, None)
+            }
+        }
+
+        const NOT_AVAILABLE: &str = "ERROR: [youtube] x: This video is not available";
+
+        /// What `VideoError::Failed` carries: yt-dlp's line without its prefix.
+        fn shown(line: &str) -> String {
+            line.trim_start_matches("ERROR: ").to_string()
+        }
+
+        #[tokio::test]
+        async fn a_youtube_video_the_default_client_cannot_open_is_retried_with_the_android_client()
+        {
+            let tmp = tempfile::tempdir().unwrap();
+            let y = android_only(tmp.path(), NOT_AVAILABLE);
+            y.download(
+                &job_for(tmp.path(), "https://youtu.be/abcdefghijk"),
+                &CancelFlag::new(),
+                &|_| {},
+            )
+            .await
+            .unwrap();
+            assert!(tmp.path().join("01 - Intro.mp4").is_file());
+            assert_eq!(calls(tmp.path()), 2);
+        }
+
+        #[tokio::test]
+        async fn a_video_that_is_not_on_youtube_is_not_retried() {
+            let tmp = tempfile::tempdir().unwrap();
+            let y = android_only(tmp.path(), NOT_AVAILABLE);
+            let err = y
+                .download(
+                    &job_for(tmp.path(), "https://stream.mux.com/p.m3u8"),
+                    &CancelFlag::new(),
+                    &|_| {},
+                )
+                .await
+                .unwrap_err();
+            assert_eq!(err, VideoError::Failed(shown(NOT_AVAILABLE)));
+            assert_eq!(calls(tmp.path()), 1);
+        }
+
+        #[tokio::test]
+        async fn other_youtube_failures_are_not_retried() {
+            for message in [
+                "ERROR: [youtube] x: This video is not available in your country",
+                "ERROR: [youtube] x: Private video. Sign in if you've been granted access",
+                "ERROR: [youtube] x: Sign in to confirm you're not a bot",
+            ] {
+                let tmp = tempfile::tempdir().unwrap();
+                let y = android_only(tmp.path(), message);
+                let err = y
+                    .download(
+                        &job_for(tmp.path(), "https://www.youtube.com/watch?v=abcdefghijk"),
+                        &CancelFlag::new(),
+                        &|_| {},
+                    )
+                    .await
+                    .unwrap_err();
+                assert_eq!(err, VideoError::Failed(shown(message)));
+                assert_eq!(calls(tmp.path()), 1, "{message}");
+            }
+        }
+
+        #[tokio::test]
+        async fn a_video_that_fails_with_the_android_client_too_reports_the_original_error() {
+            let tmp = tempfile::tempdir().unwrap();
+            let y = script(
+                tmp.path(),
+                &format!(
+                    r#"all="$*"
+{OUTPUT_FILE}
+echo called >> "{log}"
+case "$all" in
+  *youtube:player_client=android*) echo "ERROR: [youtube] x: Requested format is not available" >&2 ;;
+  *) echo "{NOT_AVAILABLE}" >&2 ;;
+esac
+exit 1"#,
+                    log = tmp.path().join("calls.log").display()
+                ),
+            );
+            let err = y
+                .download(
+                    &job_for(tmp.path(), "https://youtu.be/abcdefghijk"),
+                    &CancelFlag::new(),
+                    &|_| {},
+                )
+                .await
+                .unwrap_err();
+            assert_eq!(err, VideoError::Failed(shown(NOT_AVAILABLE)));
+            assert_eq!(calls(tmp.path()), 2);
         }
 
         #[tokio::test]

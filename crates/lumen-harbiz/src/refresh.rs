@@ -2,11 +2,14 @@
 //! from the `.workout.json` each class keeps, so a library downloaded by an
 //! older version shows per-exercise notes without running an update.
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+
+use lumen_youtube::url::{parse_target, Target};
 
 use crate::downloader::write_notes;
 use crate::parse::Workout;
-use crate::planner::{course_dir, plan_exercises, PlannedWorkout, WORKOUT_FILE};
+use crate::planner::{course_dir, find_video, plan_exercises, PlannedWorkout, WORKOUT_FILE};
 
 fn visible_dirs(dir: &Path) -> Vec<PathBuf> {
     let Ok(entries) = std::fs::read_dir(dir) else {
@@ -22,6 +25,33 @@ fn visible_dirs(dir: &Path) -> Vec<PathBuf> {
         .collect();
     dirs.sort();
     dirs
+}
+
+/// Every YouTube video already in the library, by video id, as the file of
+/// the first class that holds it. Lets a later run link an exercise to a video
+/// another class downloaded instead of fetching (and storing) it again.
+pub(crate) fn saved_videos(library_root: &Path) -> HashMap<String, PathBuf> {
+    let mut saved = HashMap::new();
+    for month in visible_dirs(&course_dir(library_root)) {
+        for class in visible_dirs(&month) {
+            let Some(workout) = std::fs::read_to_string(class.join(WORKOUT_FILE))
+                .ok()
+                .and_then(|json| serde_json::from_str::<Workout>(&json).ok())
+            else {
+                continue;
+            };
+            for planned in plan_exercises(&class, &workout.exercises) {
+                let Some(Ok(Target::Video(id))) = planned.exercise.url.as_deref().map(parse_target)
+                else {
+                    continue;
+                };
+                if let Some(path) = find_video(&class, &planned.stem) {
+                    saved.entry(id).or_insert(path);
+                }
+            }
+        }
+    }
+    saved
 }
 
 /// Number of files written. Zero means everything was already up to date.
