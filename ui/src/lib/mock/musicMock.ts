@@ -10,7 +10,7 @@ const COVER = `data:image/svg+xml,${encodeURIComponent(
 
 export function createMusicMock(on: string | null): Pick<
   Api,
-  "mediaNowPlaying" | "mediaPlayPause" | "mediaNext" | "mediaPrevious" | "mediaSetVolume" | "mediaSetShuffle" | "mediaSetRepeat"
+  "mediaNowPlaying" | "mediaPlayPause" | "mediaNext" | "mediaPrevious" | "mediaSetVolume" | "mediaSeek" | "mediaSetShuffle" | "mediaSetRepeat"
 > {
   let now: NowPlaying | null = on
     ? {
@@ -22,6 +22,7 @@ export function createMusicMock(on: string | null): Pick<
         lengthSecs: 263,
         shuffle: false,
         repeat: "none",
+        canSeek: true,
         volume: 0.6,
         canPrevious: true,
         canNext: true,
@@ -36,6 +37,7 @@ export function createMusicMock(on: string | null): Pick<
     mediaNext: async () => update({ title: "Second Wind", positionSecs: 0 }),
     mediaPrevious: async () => update({ title: "Steady Pulse", positionSecs: 0 }),
     mediaSetVolume: async (volume) => update({ volume }),
+    mediaSeek: async (positionSecs) => update({ positionSecs }),
     mediaSetShuffle: async (shuffle) => update({ shuffle }),
     mediaSetRepeat: async (repeat) => update({ repeat }),
   };

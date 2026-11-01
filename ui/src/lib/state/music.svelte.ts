@@ -42,3 +42,11 @@ export async function command(run: () => Promise<void>): Promise<void> {
 export function setVolumeLocally(volume: number): void {
   if (music.now) music.now = { ...music.now, volume };
 }
+
+/** Shows a jump at once, before the next reading of Spotify confirms it. */
+export function setPositionLocally(seconds: number): void {
+  if (music.now) {
+    music.now = { ...music.now, positionSecs: seconds };
+    music.readAt = performance.now();
+  }
+}

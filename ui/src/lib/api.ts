@@ -95,6 +95,8 @@ export interface Api {
   mediaPrevious(): Promise<void>;
   /** `volume` is 0 to 1. */
   mediaSetVolume(volume: number): Promise<void>;
+  /** Jumps to `position` seconds into the song now playing. */
+  mediaSeek(position: number): Promise<void>;
   mediaSetShuffle(enabled: boolean): Promise<void>;
   mediaSetRepeat(mode: RepeatMode): Promise<void>;
   /** Pause and resume work for a download of any platform: ids are unique across them. */
@@ -307,6 +309,7 @@ function tauriApi(): Api {
     mediaNext: () => call("media_next"),
     mediaPrevious: () => call("media_previous"),
     mediaSetVolume: (volume) => call("media_set_volume", { volume }),
+    mediaSeek: (position) => call("media_seek", { position }),
     mediaSetShuffle: (enabled) => call("media_set_shuffle", { enabled }),
     mediaSetRepeat: (mode) => call("media_set_repeat", { mode }),
     downloadPause: (id) => call("download_pause", { id }),

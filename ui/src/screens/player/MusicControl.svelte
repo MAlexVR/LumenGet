@@ -3,6 +3,7 @@
   import Icon from "../../lib/design/Icon.svelte";
   import { t } from "../../lib/i18n/index.svelte";
   import {
+    clampSeek,
     displayedPosition,
     muteTarget,
     musicAttr,
@@ -14,7 +15,7 @@
   } from "../../lib/logic/music";
   import { formatTime } from "../../lib/logic/time";
   import { app } from "../../lib/state/app.svelte";
-  import { command, music, setVolumeLocally, watchMusic } from "../../lib/state/music.svelte";
+  import { command, music, setPositionLocally, setVolumeLocally, watchMusic } from "../../lib/state/music.svelte";
 
   let { idle }: { idle: boolean } = $props();
 
@@ -24,13 +25,16 @@
   /** The last audible volume, brought back when the speaker button unmutes. */
   let beforeMute = $state(0.5);
   let tick = $state(performance.now());
+  /** Where the slider is while it is being dragged, before the jump is made. */
+  let scrub = $state<number | null>(null);
 
   const now = $derived(music.now);
   const label = $derived(now ? trackLabel(now) : null);
   const position = $derived(
     now ? displayedPosition(now.positionSecs, now.lengthSecs, now.playing, (tick - music.readAt) / 1000) : 0,
   );
-  const fraction = $derived(now ? progressFraction(position, now.lengthSecs) : 0);
+  const shown = $derived(scrub ?? position);
+  const fraction = $derived(now ? progressFraction(shown, now.lengthSecs) : 0);
   const repeatLabel = $derived(now ? t(`music_repeat_${now.repeat}` as const) : "");
 
   onMount(() => watchMusic());
@@ -53,6 +57,13 @@
     const volume = percentToVolume(Number((e.currentTarget as HTMLInputElement).value));
     setVolumeLocally(volume);
     void run(() => app.api?.mediaSetVolume(volume));
+  }
+
+  function seek(e: Event) {
+    if (!now) return;
+    const seconds = clampSeek(Number((e.currentTarget as HTMLInputElement).value), now.lengthSecs);
+    setPositionLocally(seconds);
+    void run(() => app.api?.mediaSeek(seconds)).finally(() => (scrub = null));
   }
 
   function toggleMute() {
@@ -86,19 +97,24 @@
           </div>
         </div>
 
-        <div class="progress">
-          <span class="clock num">{formatTime(position)}</span>
-          <div
-            class="bar"
-            role="progressbar"
+        <div class="row">
+          <span class="clock num">{formatTime(shown)}</span>
+          <input
+            class="slider"
+            type="range"
+            min="0"
+            max={now.lengthSecs ?? 0}
+            step="1"
+            value={Math.round(shown)}
+            disabled={!now.canSeek || now.lengthSecs === null}
             aria-label={t("music_progress")}
-            aria-valuemin="0"
-            aria-valuemax={now.lengthSecs ?? 0}
-            aria-valuenow={Math.round(position)}
-          >
-            <span class="fill" style:width="{fraction * 100}%"></span>
-          </div>
-          <span class="clock num">{now.lengthSecs === null ? "–:––" : formatTime(now.lengthSecs)}</span>
+            aria-valuetext="{formatTime(shown)} / {now.lengthSecs === null ? '–:––' : formatTime(now.lengthSecs)}"
+            style:--fill="{fraction * 100}%"
+            style:--color="var(--text)"
+            oninput={(e) => (scrub = Number(e.currentTarget.value))}
+            onchange={seek}
+          />
+          <span class="clock num end">{now.lengthSecs === null ? "–:––" : formatTime(now.lengthSecs)}</span>
         </div>
 
         <div class="buttons">
@@ -156,7 +172,7 @@
         </div>
 
         {#if now.volume !== null}
-          <div class="volume">
+          <div class="row">
             <button
               type="button"
               class="btn-ico small"
@@ -167,14 +183,18 @@
               <Icon name={now.volume > 0 ? "volume" : "mute"} size={18} />
             </button>
             <input
+              class="slider"
               type="range"
               min="0"
               max="100"
               step="5"
               value={volumeToPercent(now.volume)}
               aria-label={t("music_volume")}
+              style:--fill="{volumeToPercent(now.volume)}%"
+              style:--color="var(--lumen)"
               oninput={setVolume}
             />
+            <span aria-hidden="true"></span>
           </div>
         {/if}
       </div>
@@ -281,31 +301,68 @@
     font-size: var(--fs-sm);
     color: var(--text-muted);
   }
-  .progress {
-    display: flex;
+  /* The song bar and the volume bar share these columns, so they are as long as each other. */
+  .row {
+    display: grid;
+    grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem;
     align-items: center;
-    gap: var(--s-2);
+    column-gap: var(--s-2);
   }
   .clock {
-    flex: none;
-    min-width: 2.5em;
     font-size: var(--fs-xs);
     color: var(--text-muted);
   }
-  .clock:last-child {
+  .clock.end {
     text-align: right;
   }
-  .bar {
-    flex: 1;
-    height: 4px;
-    overflow: hidden;
-    border-radius: 2px;
-    background: var(--line);
+  .slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 16px;
+    margin: 0;
+    background: transparent;
+    cursor: pointer;
   }
-  .fill {
-    display: block;
-    height: 100%;
+  .slider:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .slider::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 2px;
+    background: linear-gradient(to right, var(--color) var(--fill), var(--line) var(--fill));
+  }
+  .slider::-moz-range-track {
+    height: 4px;
+    border-radius: 2px;
+    background: linear-gradient(to right, var(--color) var(--fill), var(--line) var(--fill));
+  }
+  .slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    margin-top: -4px;
+    border: 0;
+    border-radius: 50%;
     background: var(--text);
+    opacity: 0;
+  }
+  .slider::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--text);
+    opacity: 0;
+  }
+  .slider:hover::-webkit-slider-thumb,
+  .slider:focus-visible::-webkit-slider-thumb {
+    opacity: 1;
+  }
+  .slider:hover::-moz-range-thumb,
+  .slider:focus-visible::-moz-range-thumb {
+    opacity: 1;
   }
   .buttons {
     display: flex;
@@ -349,16 +406,6 @@
   .btn-ico.small {
     width: 28px;
     height: 28px;
-  }
-  .volume {
-    display: flex;
-    align-items: center;
-    gap: var(--s-2);
-  }
-  .volume input {
-    flex: 1;
-    min-width: 0;
-    accent-color: var(--lumen);
   }
   @media (prefers-reduced-motion: reduce) {
     .music,

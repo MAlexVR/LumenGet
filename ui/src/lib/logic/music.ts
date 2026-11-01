@@ -64,3 +64,9 @@ export function muteTarget(volume: number | null, before: number): number {
   if (volume !== null && volume > 0) return 0;
   return before > 0 ? before : 0.5;
 }
+
+/** The point of the song a jump may go to: inside it, and zero when its length is unknown. */
+export function clampSeek(seconds: number, length: number | null): number {
+  if (length === null || !Number.isFinite(seconds)) return 0;
+  return Math.min(length, Math.max(0, seconds));
+}

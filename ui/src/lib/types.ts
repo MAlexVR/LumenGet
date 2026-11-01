@@ -211,6 +211,8 @@ export interface NowPlaying {
   lengthSecs: number | null;
   shuffle: boolean;
   repeat: RepeatMode;
+  /** Whether the song can be skipped to another point. */
+  canSeek: boolean;
   /** 0 to 1; `null` when the player does not expose its volume. */
   volume: number | null;
   canPrevious: boolean;

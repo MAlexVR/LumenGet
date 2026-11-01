@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { displayedPosition, muteTarget, nextRepeat, ownsKeys, percentToVolume, progressFraction, trackLabel, volumeToPercent } from "./music";
+import { clampSeek, displayedPosition, muteTarget, nextRepeat, ownsKeys, percentToVolume, progressFraction, trackLabel, volumeToPercent } from "./music";
 import type { NowPlaying } from "../types";
 
 const song = (over: Partial<NowPlaying> = {}): NowPlaying => ({
@@ -10,6 +10,7 @@ const song = (over: Partial<NowPlaying> = {}): NowPlaying => ({
   lengthSecs: 263,
   shuffle: false,
   repeat: "none",
+  canSeek: true,
   playing: true,
   volume: 0.5,
   canPrevious: true,
@@ -128,5 +129,21 @@ describe("muteTarget", () => {
   it("falls back to half when there is nothing to bring back", () => {
     expect(muteTarget(0, 0)).toBe(0.5);
     expect(muteTarget(null, 0)).toBe(0.5);
+  });
+});
+
+describe("clampSeek", () => {
+  it("keeps a point inside the song", () => {
+    expect(clampSeek(131.4, 263)).toBe(131.4);
+  });
+
+  it("never goes before the start or past the end", () => {
+    expect(clampSeek(-5, 263)).toBe(0);
+    expect(clampSeek(300, 263)).toBe(263);
+  });
+
+  it("is zero when the song has no known length", () => {
+    expect(clampSeek(40, null)).toBe(0);
+    expect(clampSeek(Number.NaN, 263)).toBe(0);
   });
 });
