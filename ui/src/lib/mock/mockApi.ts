@@ -10,6 +10,7 @@ import { createLibraryMock } from "./libraryMock";
 import { createYoutubeMock, youtubeLibrary } from "./youtubeMock";
 import { createUpdateMock } from "./updateMock";
 import { createUdemyMock } from "./udemyMock";
+import { createMusicMock } from "./musicMock";
 
 const SAMPLE_DESCRIPTION = `<!doctype html><html><head><style>body{background:#fff;color:#222;font-family:Arial}</style></head><body>
 <h2>Sobre esta clase</h2>
@@ -176,6 +177,7 @@ export function createMockApi(): Api {
     ...createPluralsightMock(params.get("pluralsight"), bus),
     ...createGoldenlifeMock(params.get("goldenlife"), bus),
     ...createHarbizMock(params.get("harbiz"), bus),
+    ...createMusicMock(params.get("music")),
     workoutPlan: async (video) =>
       video.includes("Hip mobility")
         ? [

@@ -196,6 +196,17 @@ export interface ExercisePlan {
   notes: string;
 }
 
+/** What the owner's Spotify plays; `null` from the API when it is closed. */
+export interface NowPlaying {
+  title: string;
+  artist: string;
+  playing: boolean;
+  /** 0 to 1; `null` when the player does not expose its volume. */
+  volume: number | null;
+  canPrevious: boolean;
+  canNext: boolean;
+}
+
 export interface RunningDownload {
   id: string;
   platform: PlatformId;

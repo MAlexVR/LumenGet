@@ -19,6 +19,7 @@
   import LessonList from "./player/LessonList.svelte";
   import VideoStage from "./player/VideoStage.svelte";
   import type { ExercisePlan, Resource } from "../lib/types";
+  import MusicControl from "./player/MusicControl.svelte";
   import WorkoutHud from "./player/WorkoutHud.svelte";
 
   let { group, lessonKey }: { group: string; lessonKey: string } = $props();
@@ -212,6 +213,7 @@
             onundo={() => plan && sessions.update(lessonKey, (s) => undoSet(s, plan.number))}
             onnext={() => step(1)}
           />
+          <MusicControl {idle} />
         {/snippet}
         {#if lesson.hasVideo && current}
           <!-- One stage for every video of the session: recreating it would leave fullscreen. -->

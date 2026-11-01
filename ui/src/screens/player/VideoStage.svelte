@@ -4,6 +4,7 @@
   import Icon from "../../lib/design/Icon.svelte";
   import { t } from "../../lib/i18n/index.svelte";
   import { afterEnd } from "../../lib/logic/loop";
+  import { ownsKeys } from "../../lib/logic/music";
   import { actionForKey, nextSpeed, SPEEDS, type PlayerAction } from "../../lib/logic/keymap";
   import { formatTime, resumeSeek, shouldSavePosition } from "../../lib/logic/time";
   import SeekBar from "./SeekBar.svelte";
@@ -238,6 +239,8 @@
       return;
     }
     const target = e.target as HTMLElement | null;
+    // The music control owns every key typed inside it.
+    if (ownsKeys(target)) return;
     // Let buttons keep Space/Enter for themselves.
     if ((e.key === " " || e.key === "Enter") && target?.closest("button, a")) return;
     const action = actionForKey({

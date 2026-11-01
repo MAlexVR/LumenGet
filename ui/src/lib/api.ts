@@ -25,6 +25,7 @@ import type {
   HarbizLoginOutcome,
   HarbizCourse,
   ExercisePlan,
+  NowPlaying,
   Library,
   LoginOutcome,
   PlatformGroup,
@@ -86,6 +87,13 @@ export interface Api {
   hotmartDownloadCancel(id: string): Promise<boolean>;
   /** Sets and repetitions of each exercise of the workout this video belongs to ([] when unknown). */
   workoutPlan(video: string): Promise<ExercisePlan[]>;
+  /** What Spotify plays now; `null` when it is closed (the player then shows no music control). */
+  mediaNowPlaying(): Promise<NowPlaying | null>;
+  mediaPlayPause(): Promise<void>;
+  mediaNext(): Promise<void>;
+  mediaPrevious(): Promise<void>;
+  /** `volume` is 0 to 1. */
+  mediaSetVolume(volume: number): Promise<void>;
   /** Pause and resume work for a download of any platform: ids are unique across them. */
   downloadPause(id: string): Promise<boolean>;
   downloadResume(id: string): Promise<boolean>;
@@ -291,6 +299,11 @@ function tauriApi(): Api {
     ...createGoldenlifeCommands(call),
     ...createHarbizCommands(call),
     workoutPlan: (video) => call("lesson_workout_plan", { video }),
+    mediaNowPlaying: () => call("media_now_playing"),
+    mediaPlayPause: () => call("media_play_pause"),
+    mediaNext: () => call("media_next"),
+    mediaPrevious: () => call("media_previous"),
+    mediaSetVolume: (volume) => call("media_set_volume", { volume }),
     downloadPause: (id) => call("download_pause", { id }),
     downloadResume: (id) => call("download_resume", { id }),
     updateCheck: () => call("update_check"),
