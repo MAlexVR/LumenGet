@@ -124,6 +124,14 @@
     else video.pause();
   }
 
+  /** Halts the video and leaves it paused at its first second. */
+  function stop() {
+    if (!video) return;
+    video.pause();
+    video.currentTime = 0;
+    show(formatTime(0));
+  }
+
   /** Plays the lesson again from its first second, whether it was paused, playing or finished. */
   function restart() {
     if (!video) return;
@@ -326,6 +334,9 @@
       <div class="group" role="group" aria-label={t("playback")}>
         <button class="icon-btn" type="button" onclick={togglePlay} aria-label={t(paused ? "play" : "pause")}>
           <Icon name={paused ? "play" : "pause"} />
+        </button>
+        <button class="icon-btn" type="button" onclick={stop} aria-label={t("stop")} title={t("stop")}>
+          <Icon name="stop" />
         </button>
         <button class="icon-btn" type="button" onclick={restart} aria-label={t("restart")} title={t("restart")}>
           <Icon name="restart" />

@@ -7,9 +7,11 @@
   import { lessonVideos, stepVideo } from "../lib/logic/lessonVideos";
   import { decodeMedia, encodeMedia } from "../lib/logic/mediaId";
   import { flattenCourse, positionOf } from "../lib/logic/progress";
+  import { withoutDatePrefix } from "../lib/logic/theatre";
   import { wording } from "../lib/logic/videos";
   import { completeSet, pauseTimer, resumeTimer, setProgress, shouldHold, toggleTimer, undoSet } from "../lib/logic/workoutSession";
   import { app } from "../lib/state/app.svelte";
+  import { cinema, toggleCinema } from "../lib/state/theatre.svelte";
   import { sessions } from "../lib/state/workoutSessions.svelte";
   import { href, navigate } from "../lib/state/router.svelte";
   import Description from "./player/Description.svelte";
@@ -47,7 +49,7 @@
     }
   };
 
-  let theatre = $state(pref("lumen.theatre", false));
+  const theatre = $derived(cinema.on);
   let autoplayNext = $state(pref("lumen.autoplayNext", true));
   /** Repeat the video until the viewer moves on; kept across videos and sessions. */
   let loop = $state(pref("lumen.loop", false));
@@ -78,11 +80,6 @@
     if (!target) return;
     autoKey = auto ? target.lesson.key : null;
     navigate({ name: "watch", group, key: target.lesson.key });
-  }
-
-  function toggleTheatre() {
-    theatre = !theatre;
-    store("lumen.theatre", theatre);
   }
 
   function toggleLoop() {
@@ -183,6 +180,12 @@
           <span>{displayTitle(item.course.title)}</span>
         </a>
         <span class="crumb">{displayTitle(item.section.title)}</span>
+        {#if theatre}
+          <div class="cine-title">
+            <span class="eyebrow num">{t(wording(app.group(group)?.platform ?? "").of, { n: position, total: courseFlat.length })}</span>
+            <span class="name" title={displayTitle(lesson.title)}>{withoutDatePrefix(displayTitle(lesson.title))}</span>
+          </div>
+        {/if}
         <button
           type="button"
           class="btn btn-quiet drawer-btn"
@@ -237,7 +240,7 @@
               onerror={(code) => (videoError = code)}
               onnext={() => step(1)}
               onprev={() => step(-1)}
-              ontheatre={toggleTheatre}
+              ontheatre={toggleCinema}
             />
           {#if videoError !== null}
             <div class="notice error" role="alert">
@@ -636,8 +639,39 @@
   .theatre .side {
     display: none;
   }
+  /* Theatre keeps only the title (in the top bar) and the picture. */
   .theatre .info {
-    margin-inline: auto;
+    display: none;
+  }
+  .theatre .topbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  }
+  .theatre .crumb {
+    display: none;
+  }
+  .theatre .drawer-btn {
+    justify-self: end;
+  }
+  .cine-title {
+    display: grid;
+    justify-items: center;
+    gap: 2px;
+    min-width: 0;
+    max-width: min(46vw, 640px);
+    text-align: center;
+  }
+  .cine-title .eyebrow {
+    font-size: var(--fs-xs);
+  }
+  .cine-title .name {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-display);
+    font-size: var(--fs-md);
+    color: var(--text);
   }
 
   @media (max-width: 1100px) {

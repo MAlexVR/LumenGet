@@ -2,7 +2,9 @@
   import Icon, { type IconName } from "../design/Icon.svelte";
   import { t, type MessageKey } from "../i18n/index.svelte";
   import { app } from "../state/app.svelte";
+  import { railCollapsed } from "../logic/theatre";
   import { router } from "../state/router.svelte";
+  import { cinema } from "../state/theatre.svelte";
   import BrandMark from "./BrandMark.svelte";
 
   type Item = { id: "home" | "library" | "downloads" | "settings"; icon: IconName; label: MessageKey; href: string };
@@ -13,13 +15,30 @@
     { id: "settings", icon: "settings", label: "nav_settings", href: "#/settings" },
   ];
 
+  const collapsed = $derived(railCollapsed(router.route.name, cinema.on));
+  // Collapsed, the menu comes back while the pointer rests on the left edge.
+  let peek = $state(false);
+  $effect(() => {
+    if (!collapsed) peek = false;
+  });
+
   const section = $derived.by(() => {
     const n = router.route.name;
     return n === "course" || n === "watch" ? "library" : n;
   });
 </script>
 
-<nav class="rail" aria-label={t("nav_main")}>
+{#if collapsed}
+  <div class="edge" role="presentation" onmouseenter={() => (peek = true)}></div>
+{/if}
+<nav
+  class="rail"
+  class:collapsed
+  class:peek
+  inert={collapsed && !peek}
+  aria-label={t("nav_main")}
+  onmouseleave={() => (peek = false)}
+>
   <a class="brand" href="#/" aria-label="Lumen">
     <BrandMark size={28} />
     <span class="wordmark">Lumen</span>
@@ -58,6 +77,22 @@
     padding: var(--s-6) var(--s-3);
     border-right: 1px solid var(--line);
     background: var(--bg);
+  }
+  .rail.collapsed {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 30;
+    transform: translateX(-100%);
+    transition: transform var(--dur-3) var(--ease-out);
+  }
+  .rail.collapsed.peek {
+    transform: none;
+  }
+  .edge {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 29;
+    width: 10px;
   }
   .brand {
     display: flex;

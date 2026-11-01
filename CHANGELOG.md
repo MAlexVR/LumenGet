@@ -3,6 +3,16 @@
 All notable changes to Lumen. Format based on [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 Each release's notes and its git tag message are taken from the matching section (see `scripts/changelog-section.sh`).
 
+## [Unreleased]
+
+### Added
+
+- A **stop** button in the player controls: it halts the video and leaves it paused at the start (*play from the start* still restarts and plays).
+
+### Changed
+
+- **Theatre mode** now shows only the picture: the side menu steps aside (it slides back in when the pointer rests on the left edge) and the lesson title and description below the video are hidden. The title moves to the top, centred, without the date a workout folder starts with. Leave theatre mode (T) to see the buttons, description and resources again.
+
 ## [0.6.6] - 2026-11-01
 
 ### Fixed

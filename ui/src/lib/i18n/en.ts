@@ -80,6 +80,7 @@ export const en: Record<MessageKey, string> = {
   hud_reset: "Restart the workout",
   hud_notes_hide: "Hide the exercise instructions",
   hud_notes_show: "Show the exercise instructions",
+  stop: "Stop",
   restart: "Play from the start",
   playback: "Playback",
   mute: "Mute",

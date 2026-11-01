@@ -78,6 +78,7 @@ export const es = {
   hud_reset: "Reiniciar el entrenamiento",
   hud_notes_hide: "Ocultar las indicaciones del ejercicio",
   hud_notes_show: "Mostrar las indicaciones del ejercicio",
+  stop: "Detener",
   restart: "Reproducir desde el inicio",
   playback: "Reproducción",
   mute: "Silenciar",
