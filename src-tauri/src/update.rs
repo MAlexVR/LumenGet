@@ -693,10 +693,10 @@ mod tests {
         let v = tag.trim_start_matches('v');
         let names = [
             format!("Lumen_{v}_x64-setup.exe"),
-            format!("Lumen-{v}-1.x86_64.rpm"),
-            format!("Lumen-{v}-1.x86_64.rpm.sig"),
-            format!("Lumen_{v}_amd64.deb"),
-            format!("Lumen_{v}_amd64.AppImage"),
+            format!("LumenGet-{v}-1.x86_64.rpm"),
+            format!("LumenGet-{v}-1.x86_64.rpm.sig"),
+            format!("LumenGet_{v}_amd64.deb"),
+            format!("LumenGet_{v}_amd64.AppImage"),
             "notes.txt".to_string(),
         ];
         json!({"tag_name": tag, "name": format!("Lumen {tag}"), "draft": false, "prerelease": pre,
@@ -759,11 +759,11 @@ mod tests {
             "https://github.com/MAlexVR/lumen/releases/tag/v0.4.0-rc.1"
         );
         assert_eq!(j["asset"]["kind"], "rpm");
-        assert_eq!(j["asset"]["name"], "Lumen-0.4.0-rc.1-1.x86_64.rpm");
+        assert_eq!(j["asset"]["name"], "LumenGet-0.4.0-rc.1-1.x86_64.rpm");
         assert_eq!(j["asset"]["size"], 10);
         assert_eq!(
             j["asset"]["downloadUrl"],
-            "https://dl.test/Lumen-0.4.0-rc.1-1.x86_64.rpm"
+            "https://dl.test/LumenGet-0.4.0-rc.1-1.x86_64.rpm"
         );
         assert!(j["checkedAt"].as_str().unwrap().ends_with('Z'));
         let req = &f.srv.requests()[0];
@@ -793,10 +793,10 @@ mod tests {
             ),
             (json!("rpm"), json!(false))
         );
-        assert_eq!(rpm["asset"]["name"], "Lumen-0.4.0-1.x86_64.rpm");
+        assert_eq!(rpm["asset"]["name"], "LumenGet-0.4.0-1.x86_64.rpm");
         assert_eq!(rpm["signed"], true, "the release has the .sig of the rpm");
         let deb = check(InstallKind::Deb).await;
-        assert_eq!(deb["asset"]["name"], "Lumen_0.4.0_amd64.deb");
+        assert_eq!(deb["asset"]["name"], "LumenGet_0.4.0_amd64.deb");
         assert_eq!(deb["signed"], false, "no .sig for the deb");
         let win = check(InstallKind::WindowsNsis).await;
         assert_eq!(

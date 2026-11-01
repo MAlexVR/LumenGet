@@ -149,7 +149,8 @@ impl PackageProbe for SystemProbe {
 }
 
 /// Exact name of the installer for `kind` in release `version` (what the
-/// Tauri bundler produces), or `None` for kinds without one.
+/// Tauri bundler produces), or `None` for kinds without one. The Windows
+/// installer keeps the `Lumen` name (see `tauri.windows.conf.json`).
 pub fn expected_asset(kind: InstallKind, version: &Version, arch: &str) -> Option<String> {
     let v = version.to_string();
     let (deb, appimage, win) = match arch {
@@ -158,9 +159,9 @@ pub fn expected_asset(kind: InstallKind, version: &Version, arch: &str) -> Optio
         _ => return None,
     };
     Some(match kind {
-        InstallKind::Rpm => format!("Lumen-{v}-1.{arch}.rpm"),
-        InstallKind::Deb => format!("Lumen_{v}_{deb}.deb"),
-        InstallKind::Appimage => format!("Lumen_{v}_{appimage}.AppImage"),
+        InstallKind::Rpm => format!("LumenGet-{v}-1.{arch}.rpm"),
+        InstallKind::Deb => format!("LumenGet_{v}_{deb}.deb"),
+        InstallKind::Appimage => format!("LumenGet_{v}_{appimage}.AppImage"),
         InstallKind::WindowsNsis => format!("Lumen_{v}_{win}-setup.exe"),
         InstallKind::Unmanaged => return None,
     })
@@ -1090,27 +1091,27 @@ mod tests {
         let name = |k, arch| expected_asset(k, &v, arch);
         assert_eq!(
             name(InstallKind::Rpm, "x86_64").as_deref(),
-            Some("Lumen-0.4.0-1.x86_64.rpm")
+            Some("LumenGet-0.4.0-1.x86_64.rpm")
         );
         assert_eq!(
             name(InstallKind::Rpm, "aarch64").as_deref(),
-            Some("Lumen-0.4.0-1.aarch64.rpm")
+            Some("LumenGet-0.4.0-1.aarch64.rpm")
         );
         assert_eq!(
             name(InstallKind::Deb, "x86_64").as_deref(),
-            Some("Lumen_0.4.0_amd64.deb")
+            Some("LumenGet_0.4.0_amd64.deb")
         );
         assert_eq!(
             name(InstallKind::Deb, "aarch64").as_deref(),
-            Some("Lumen_0.4.0_arm64.deb")
+            Some("LumenGet_0.4.0_arm64.deb")
         );
         assert_eq!(
             name(InstallKind::Appimage, "x86_64").as_deref(),
-            Some("Lumen_0.4.0_amd64.AppImage")
+            Some("LumenGet_0.4.0_amd64.AppImage")
         );
         assert_eq!(
             name(InstallKind::Appimage, "aarch64").as_deref(),
-            Some("Lumen_0.4.0_aarch64.AppImage")
+            Some("LumenGet_0.4.0_aarch64.AppImage")
         );
         assert_eq!(
             name(InstallKind::WindowsNsis, "x86_64").as_deref(),
@@ -1129,14 +1130,14 @@ mod tests {
         let rc = crate::update::Version::parse("v0.4.0-rc.1").unwrap();
         assert_eq!(
             expected_asset(InstallKind::Deb, &rc, "x86_64").as_deref(),
-            Some("Lumen_0.4.0-rc.1_amd64.deb")
+            Some("LumenGet_0.4.0-rc.1_amd64.deb")
         );
     }
 
     #[test]
     fn argv_vectors_are_fixed_arrays_without_a_shell() {
         let file =
-            std::path::Path::new("/home/u/.cache/lumen/updates/0.4.0/Lumen-0.4.0-1.x86_64.rpm");
+            std::path::Path::new("/home/u/.cache/lumen/updates/0.4.0/LumenGet-0.4.0-1.x86_64.rpm");
         let f = file.to_string_lossy().to_string();
         let has = |names: &'static [&'static str]| move |n: &str| names.contains(&n);
         let v = |a: &[&str]| a.iter().map(|s| s.to_string()).collect::<Vec<_>>();
@@ -1411,7 +1412,7 @@ mod tests {
         let events: Arc<Mutex<Vec<Value>>> = Arc::default();
         let sink = Arc::clone(&events);
         let cache = tmp.path().join("cache/updates");
-        let appimage = tmp.path().join("Lumen_0.3.3_amd64.AppImage");
+        let appimage = tmp.path().join("LumenGet_0.3.3_amd64.AppImage");
         std::fs::write(&appimage, "old").unwrap();
         let env = UpdateEnv {
             kind,
@@ -1454,10 +1455,10 @@ mod tests {
         out
     }
 
-    const RPM: &str = "Lumen-0.4.0-1.x86_64.rpm";
-    const DEB: &str = "Lumen_0.4.0_amd64.deb";
+    const RPM: &str = "LumenGet-0.4.0-1.x86_64.rpm";
+    const DEB: &str = "LumenGet_0.4.0_amd64.deb";
     #[cfg_attr(not(unix), allow(dead_code))]
-    const APPIMAGE: &str = "Lumen_0.4.0_amd64.AppImage";
+    const APPIMAGE: &str = "LumenGet_0.4.0_amd64.AppImage";
     const EXE: &str = "Lumen_0.4.0_x64-setup.exe";
 
     fn sys_ok(commands: &[&'static str], installed: &str) -> FakeSystem {
@@ -1645,14 +1646,18 @@ mod tests {
             "0.3.3",
         )
         .await;
-        let target = f.tmp.path().join("Lumen_0.3.3_amd64.AppImage");
+        let target = f.tmp.path().join("LumenGet_0.3.3_amd64.AppImage");
         f.service.install().await.unwrap();
         assert_eq!(std::fs::read(&target).unwrap(), payload());
         assert_eq!(
             std::fs::metadata(&target).unwrap().permissions().mode() & 0o777,
             0o755
         );
-        assert!(!f.tmp.path().join("Lumen_0.3.3_amd64.AppImage.new").exists());
+        assert!(!f
+            .tmp
+            .path()
+            .join("LumenGet_0.3.3_amd64.AppImage.new")
+            .exists());
         assert_eq!(
             f.sys.spawned.lock().unwrap()[0],
             vec![

@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img alt="version" src="https://img.shields.io/badge/version-0.6.7-FDCC35?labelColor=122339">
+  <img alt="version" src="https://img.shields.io/badge/version-0.6.8-FDCC35?labelColor=122339">
   <img alt="platforms" src="https://img.shields.io/badge/Windows%2011%20%C2%B7%20Linux-122339">
   <img alt="stack" src="https://img.shields.io/badge/Rust%20%C2%B7%20Tauri%202%20%C2%B7%20Svelte%205-122339">
 </p>
@@ -79,10 +79,10 @@ Installers are published as GitHub releases ([latest](https://github.com/MAlexVR
 
 | System | File | Notes |
 |---|---|---|
-| **Windows 11** | `Lumen_0.3.5_x64-setup.exe` | Per-user install, no administrator. Includes `yt-dlp` and `ffmpeg`. Not code-signed: SmartScreen warns ("More info" > "Run anyway"). **Not tested on a real machine yet.** |
-| **Fedora / RHEL** | `Lumen-0.3.5-1.x86_64.rpm` | `sudo dnf install ./Lumen-0.3.5-1.x86_64.rpm` |
-| **Debian / Ubuntu** | `Lumen_0.3.5_amd64.deb` | `sudo apt install ./Lumen_0.3.5_amd64.deb` |
-| **Any Linux** | `Lumen_0.3.5_amd64.AppImage` | `chmod +x Lumen_0.3.5_amd64.AppImage && ./Lumen_0.3.5_amd64.AppImage` |
+| **Windows 11** | `Lumen_0.6.8_x64-setup.exe` | Per-user install, no administrator. Includes `yt-dlp` and `ffmpeg`. Not code-signed: SmartScreen warns ("More info" > "Run anyway"). **Not tested on a real machine yet.** |
+| **Fedora / RHEL** | `LumenGet-0.6.8-1.x86_64.rpm` | `sudo dnf install ./LumenGet-0.6.8-1.x86_64.rpm` (replaces the old `lumen` package) |
+| **Debian / Ubuntu** | `LumenGet_0.6.8_amd64.deb` | `sudo apt install ./LumenGet_0.6.8_amd64.deb` (replaces the old `lumen` package) |
+| **Any Linux** | `LumenGet_0.6.8_amd64.AppImage` | `chmod +x LumenGet_0.6.8_amd64.AppImage && ./LumenGet_0.6.8_amd64.AppImage` |
 
 On Linux, video downloads use the system **`yt-dlp`** (and **`ffmpeg`**, recommended for merging audio and video):
 `sudo dnf install yt-dlp ffmpeg-free` (Fedora; full `ffmpeg` needs RPM Fusion) or `sudo apt install yt-dlp ffmpeg`.

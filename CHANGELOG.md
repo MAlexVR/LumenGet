@@ -3,11 +3,14 @@
 All notable changes to LumenGet. Format based on [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 Each release's notes and its git tag message are taken from the matching section (see `scripts/changelog-section.sh`).
 
-## [Unreleased]
+## [0.6.8] - 2026-11-01
 
 ### Changed
 
-- The app is now called **LumenGet**: window title, side-menu wordmark, texts, README and docs. The installer and package file names, the program name (`lumen`), the library folder and your saved data keep their names, so updates and your library are not affected.
+- The app is now called **LumenGet**: window title, side-menu wordmark, texts, README and docs.
+- The Linux packages are now `LumenGet-…rpm`, `LumenGet_…deb` and `LumenGet_…AppImage`. The `.rpm` and `.deb` are named `lumen-get` and **replace the old `lumen` package** when installed, so the update path keeps working. Each Linux installer is also published under its old `Lumen…` name so versions up to 0.6.7 can still find their update.
+- The Windows installer keeps the name `Lumen_…_x64-setup.exe` until the rename can be tried on a real Windows machine; it installs over the previous version as before.
+- The program name (`lumen`), the library folder and your saved data keep their names.
 
 ## [0.6.7] - 2026-11-01
 

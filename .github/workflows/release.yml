@@ -189,6 +189,15 @@ jobs:
           mkdir release-files
           find dist -type f -exec cp {} release-files/ \;
 
+      # Apps older than 0.6.8 look for the Linux installers under the old `Lumen` name, so each one is
+      # also published under it (same bytes, signed below). Drop this once those versions are gone.
+      - name: Keep the old installer names
+        run: |
+          cd release-files
+          for f in LumenGet*.rpm LumenGet*.deb LumenGet*.AppImage; do
+            cp "$f" "Lumen${f#LumenGet}"
+          done
+
       # The app only installs an update whose minisign signature verifies against the public key
       # embedded in it. The private key lives only in this repository's encrypted secrets.
       - uses: pnpm/action-setup@v6
@@ -212,7 +221,7 @@ jobs:
           for f in release-files/*.rpm release-files/*.deb release-files/*.AppImage release-files/*.exe; do
             pnpm tauri signer sign "$f"
           done
-          ls release-files/*.sig | wc -l | xargs -I{} test {} -eq 4
+          ls release-files/*.sig | wc -l | xargs -I{} test {} -eq 7
 
       - name: Checksums
         run: cd release-files && sha256sum -- * > SHA256SUMS.txt && cat SHA256SUMS.txt
