@@ -1,0 +1,17 @@
+[package]
+name = "lumen-mpris"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+lumen-core.workspace = true
+async-trait = "0.1"
+zbus = "5"
+tokio = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["time"] }

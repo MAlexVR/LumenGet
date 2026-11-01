@@ -3,6 +3,7 @@
 pub mod error;
 pub mod hotmart_scan;
 pub mod model;
+pub mod music;
 pub mod platform;
 pub mod pluralsight_scan;
 pub mod progress;
@@ -16,6 +17,7 @@ pub use model::{
     Collection, Course, Group, GroupStatus, Lesson, Library, LibraryPlatform, PlatformLibrary,
     Resource, ResourceKind, Section,
 };
+pub use music::{validated_volume, MusicControl, MusicError, NowPlaying};
 pub use platform::{
     CancelFlag, CoursePlatform, CourseProgressSink, DownloadOptions, NullSink, PlatformError,
     PlatformGroup,

@@ -2418,6 +2418,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "lumen-mpris"
+version = "0.6.6"
+dependencies = [
+ "async-trait",
+ "lumen-core",
+ "tokio",
+ "zbus",
+]
+
+[[package]]
 name = "lumen-pluralsight"
 version = "0.6.6"
 dependencies = [
