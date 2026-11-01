@@ -27,6 +27,7 @@ lumen-udemy.workspace = true
 lumen-pluralsight.workspace = true
 lumen-goldenlife.workspace = true
 lumen-harbiz.workspace = true
+lumen-mpris.workspace = true
 thiserror.workspace = true
 reqwest = { version = "0.13", default-features = false, features = ["rustls"] }
 async-trait = "0.1"

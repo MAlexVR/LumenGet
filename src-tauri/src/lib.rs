@@ -5,6 +5,7 @@ mod hotmart;
 mod library_delete;
 mod library_open;
 mod library_root;
+mod music;
 mod pluralsight;
 mod session;
 mod skool;
@@ -39,6 +40,7 @@ use lumen_hotmart::CourseInfo;
 use lumen_udemy::diagnose::{DiagnoseOptions, DiagnoseProgress, DiagnoseSink};
 use lumen_udemy::parse::CourseSummary as UdemyCourse;
 use lumen_youtube::{Request as YoutubeRequest, Resolved, Youtube};
+use music::{MusicCommandError, MusicService};
 use pluralsight::{
     cookie_header_from_jar, DefaultPluralsightFactory, PluralsightLoginOutcome, PluralsightService,
 };
@@ -940,6 +942,39 @@ fn harbiz_downloads_running(harbiz: State<'_, Arc<HarbizService>>) -> Vec<Runnin
     harbiz.running()
 }
 
+/// The owner's Spotify, as the player's floating control sees it: `None`
+/// when Spotify is closed (the control stays hidden).
+#[tauri::command]
+async fn media_now_playing(
+    music: State<'_, Arc<MusicService>>,
+) -> Result<Option<lumen_core::NowPlaying>, MusicCommandError> {
+    music.now_playing().await
+}
+
+#[tauri::command]
+async fn media_play_pause(music: State<'_, Arc<MusicService>>) -> Result<(), MusicCommandError> {
+    music.play_pause().await
+}
+
+#[tauri::command]
+async fn media_next(music: State<'_, Arc<MusicService>>) -> Result<(), MusicCommandError> {
+    music.next().await
+}
+
+#[tauri::command]
+async fn media_previous(music: State<'_, Arc<MusicService>>) -> Result<(), MusicCommandError> {
+    music.previous().await
+}
+
+/// `volume` is 0 to 1.
+#[tauri::command]
+async fn media_set_volume(
+    volume: f64,
+    music: State<'_, Arc<MusicService>>,
+) -> Result<(), MusicCommandError> {
+    music.set_volume(volume).await
+}
+
 /// Cached video thumbnails: answers at once with ready/pending/unavailable;
 /// finished items arrive as `thumbnails://ready` events.
 #[tauri::command]
@@ -1104,6 +1139,9 @@ pub fn run() {
                 session::SessionStore::for_platform(&data_dir, "harbiz"),
                 Arc::new(DefaultHarbizFactory::new(ytdlp.clone())),
             )));
+            app.manage(Arc::new(MusicService::new(Arc::new(
+                lumen_mpris::MprisSpotify::new(),
+            ))));
             app.manage(Arc::new(PluralsightService::new(
                 session::SessionStore::for_platform(&data_dir, "pluralsight"),
                 Arc::new(DefaultPluralsightFactory::new(ytdlp)),
@@ -1126,6 +1164,11 @@ pub fn run() {
             lesson_workout_plan,
             open_library_path,
             open_library_folder,
+            media_now_playing,
+            media_play_pause,
+            media_next,
+            media_previous,
+            media_set_volume,
             progress_group,
             progress_set_watched,
             progress_set_last,
