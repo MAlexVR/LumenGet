@@ -3,6 +3,12 @@
 All notable changes to LumenGet. Format based on [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 Each release's notes and its git tag message are taken from the matching section (see `scripts/changelog-section.sh`).
 
+## [0.6.9] - 2026-11-02
+
+### Changed
+
+- The updater now looks for new versions in the renamed repository, `MAlexVR/LumenGet` (GitHub keeps redirecting the old name `MAlexVR/lumen`, so older installed copies still find their updates). The repository link in the README, the access token help and the examples say the new name too.
+
 ## [0.6.8] - 2026-11-01
 
 ### Changed
