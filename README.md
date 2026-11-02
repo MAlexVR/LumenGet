@@ -75,7 +75,7 @@ Harbiz/Harbiz Training/<YYYY-MM>/<date - workout title>/
 
 ## Download
 
-Installers are published as GitHub releases ([latest](https://github.com/MAlexVR/lumen/releases)). Check files with `sha256sum -c SHA256SUMS.txt`.
+Installers are published as GitHub releases ([latest](https://github.com/MAlexVR/LumenGet/releases)). Check files with `sha256sum -c SHA256SUMS.txt`.
 
 | System | File | Notes |
 |---|---|---|

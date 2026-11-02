@@ -1209,10 +1209,10 @@ mod tests {
         let p = DownloadPolicy::github();
         let ok = |u: &str| p.allows(&url::Url::parse(u).unwrap());
         for u in [
-            "https://github.com/MAlexVR/lumen/releases/download/v1/a.rpm",
+            "https://github.com/MAlexVR/LumenGet/releases/download/v1/a.rpm",
             "https://objects.githubusercontent.com/x",
             "https://release-assets.githubusercontent.com/x",
-            "https://api.github.com/repos/MAlexVR/lumen/releases/assets/1",
+            "https://api.github.com/repos/MAlexVR/LumenGet/releases/assets/1",
         ] {
             assert!(ok(u), "{u}");
         }

@@ -373,7 +373,7 @@ export const es = {
   upd_access: "Acceso al repositorio",
   upd_access_hint: "Solo hace falta mientras el repositorio sea privado. Si se hace público, no necesitas token.",
   upd_step1: "En GitHub abre Settings › Developer settings › Fine-grained personal access tokens y crea un token nuevo.",
-  upd_step2: "Elige solo el repositorio MAlexVR/lumen y da únicamente el permiso de lectura «Contents».",
+  upd_step2: "Elige solo el repositorio MAlexVR/LumenGet y da únicamente el permiso de lectura «Contents».",
   upd_step3: "Copia el token y pégalo aquí. Se guarda solo en este equipo.",
   upd_token_label: "Token de acceso",
   upd_token_save: "Guardar token",

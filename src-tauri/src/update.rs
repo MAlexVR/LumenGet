@@ -23,7 +23,7 @@ use crate::state::AppCore;
 use crate::update_install::{expected_asset, DownloadPolicy, InstallKind, UpdateEnv};
 use crate::update_verify::UPDATE_PUBKEY;
 
-pub const UPDATE_REPO: &str = "MAlexVR/lumen";
+pub const UPDATE_REPO: &str = "MAlexVR/LumenGet";
 const API_BASE: &str = "https://api.github.com";
 const API_VERSION: &str = "2022-11-28";
 const RELEASES_PER_PAGE: u32 = 15;
@@ -700,7 +700,7 @@ mod tests {
             "notes.txt".to_string(),
         ];
         json!({"tag_name": tag, "name": format!("Lumen {tag}"), "draft": false, "prerelease": pre,
-               "published_at": "2026-10-01T12:00:00Z", "html_url": format!("https://github.com/MAlexVR/lumen/releases/tag/{tag}"),
+               "published_at": "2026-10-01T12:00:00Z", "html_url": format!("https://github.com/MAlexVR/LumenGet/releases/tag/{tag}"),
                "body": body, "assets": names.iter().map(|n| json!({"name": n, "size": 10, "url": format!("https://api.test/{n}"), "browser_download_url": format!("https://dl.test/{n}")})).collect::<Vec<_>>()})
     }
 
@@ -756,7 +756,7 @@ mod tests {
         assert_eq!(j["notes"], "rc notes");
         assert_eq!(
             j["htmlUrl"],
-            "https://github.com/MAlexVR/lumen/releases/tag/v0.4.0-rc.1"
+            "https://github.com/MAlexVR/LumenGet/releases/tag/v0.4.0-rc.1"
         );
         assert_eq!(j["asset"]["kind"], "rpm");
         assert_eq!(j["asset"]["name"], "LumenGet-0.4.0-rc.1-1.x86_64.rpm");
@@ -769,7 +769,7 @@ mod tests {
         let req = &f.srv.requests()[0];
         assert!(
             req.path_and_query
-                .starts_with("/repos/MAlexVR/lumen/releases?per_page=15"),
+                .starts_with("/repos/MAlexVR/LumenGet/releases?per_page=15"),
             "{}",
             req.path_and_query
         );
@@ -1139,6 +1139,6 @@ mod tests {
         ] {
             assert_eq!(serde_json::to_value(c).unwrap(), s);
         }
-        assert_eq!(UPDATE_REPO, "MAlexVR/lumen");
+        assert_eq!(UPDATE_REPO, "MAlexVR/LumenGet");
     }
 }

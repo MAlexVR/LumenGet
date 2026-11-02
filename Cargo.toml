@@ -6,7 +6,7 @@ members = ["crates/lumen-core", "crates/lumen-media", "crates/lumen-download", "
 version = "0.6.8"
 edition = "2021"
 license = "MIT"
-repository = "https://github.com/MAlexVR/lumen"
+repository = "https://github.com/MAlexVR/LumenGet"
 rust-version = "1.97"
 
 [workspace.lints.rust]

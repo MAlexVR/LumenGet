@@ -375,7 +375,7 @@ export const en: Record<MessageKey, string> = {
   upd_access: "Repository access",
   upd_access_hint: "Only needed while the repository is private. If it becomes public you need no token.",
   upd_step1: "On GitHub open Settings > Developer settings > Fine-grained personal access tokens and create a new token.",
-  upd_step2: "Choose only the MAlexVR/lumen repository and grant only the read-only \"Contents\" permission.",
+  upd_step2: "Choose only the MAlexVR/LumenGet repository and grant only the read-only \"Contents\" permission.",
   upd_step3: "Copy the token and paste it here. It is stored only on this computer.",
   upd_token_label: "Access token",
   upd_token_save: "Save token",
