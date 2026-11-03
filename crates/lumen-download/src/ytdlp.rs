@@ -3,6 +3,7 @@
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -88,12 +89,40 @@ pub fn parse_percent(line: &str) -> Option<f32> {
     rest[..end].trim().parse::<f32>().ok()
 }
 
-pub fn build_args(job: &VideoJob) -> Vec<String> {
+/// Course videos are capped at 720p unless the user picks another height.
+const DEFAULT_MAX_HEIGHT: u32 = 720;
+
+/// Chosen maximum video height shared by every download; 0 means no cap.
+static MAX_HEIGHT: AtomicU32 = AtomicU32::new(DEFAULT_MAX_HEIGHT);
+
+/// The height cap course videos are downloaded with (`None`: best available).
+pub fn max_height() -> Option<u32> {
+    match MAX_HEIGHT.load(Ordering::Relaxed) {
+        0 => None,
+        h => Some(h),
+    }
+}
+
+pub fn set_max_height(height: Option<u32>) {
+    MAX_HEIGHT.store(height.unwrap_or(0), Ordering::Relaxed);
+}
+
+/// yt-dlp `-f` selector: a single file at or under the height, else video and
+/// audio merged, else whatever the site offers.
+pub fn format_selector(max_height: Option<u32>) -> String {
+    match max_height {
+        Some(h) => format!("best[height<={h}]/bestvideo[height<={h}]+bestaudio/best"),
+        None => "bestvideo+bestaudio/best".to_string(),
+    }
+}
+
+pub fn build_args(job: &VideoJob, max_height: Option<u32>) -> Vec<String> {
+    let format = format_selector(max_height);
     let mut args: Vec<String> = [
         "--progress",
         "--newline",
         "-f",
-        "best[height<=720]/bestvideo[height<=720]+bestaudio/best",
+        format.as_str(),
         "-N",
         "4",
         "--retries",
@@ -589,7 +618,7 @@ impl VideoRunner for YtDlp {
         cancel: &CancelFlag,
         on_percent: &(dyn Fn(f32) + Send + Sync),
     ) -> Result<(), VideoError> {
-        let args = build_args(job);
+        let args = build_args(job, max_height());
         let first = self
             .run(args.clone(), &job.output_template, cancel, on_percent)
             .await;
@@ -790,15 +819,37 @@ mod tests {
     fn fragment_concurrency_stays_low_so_windows_can_rename_the_part_file() {
         // With -N 64 the final `.part` rename failed with WinError 32 on the
         // same HLS lesson that downloads fine with -N 4.
-        let a = build_args(&job(Path::new("/x"), None));
+        let a = build_args(&job(Path::new("/x"), None), Some(720));
         let at = a.iter().position(|x| x == "-N").expect("-N is set");
         assert_eq!(a[at + 1], "4");
     }
 
     #[test]
+    fn the_format_selector_caps_the_height_and_falls_back_to_the_best() {
+        assert_eq!(
+            format_selector(Some(480)),
+            "best[height<=480]/bestvideo[height<=480]+bestaudio/best"
+        );
+        assert_eq!(format_selector(None), "bestvideo+bestaudio/best");
+        let a = build_args(&job(Path::new("/x"), None), Some(360));
+        let at = a.iter().position(|x| x == "-f").unwrap();
+        assert_eq!(a[at + 1], format_selector(Some(360)));
+    }
+
+    #[test]
+    fn the_chosen_quality_is_shared_and_defaults_to_720p() {
+        assert_eq!(max_height(), Some(720));
+        set_max_height(Some(480));
+        assert_eq!(max_height(), Some(480));
+        set_max_height(None);
+        assert_eq!(max_height(), None);
+        set_max_height(Some(720));
+    }
+
+    #[test]
     fn args_follow_the_proven_recipe() {
         let tmp = Path::new("/x");
-        let a = build_args(&job(tmp, Some("https://www.skool.com/")));
+        let a = build_args(&job(tmp, Some("https://www.skool.com/")), Some(720));
         let pos = |s: &str| a.iter().position(|x| x == s);
         assert_eq!(a[pos("--referer").unwrap() + 1], "https://www.skool.com/");
         assert!(pos("--newline").is_some());
@@ -811,16 +862,20 @@ mod tests {
             a[pos("-o").unwrap() + 1],
             Path::new("/x").join("01 - Intro.%(ext)s").to_string_lossy()
         );
-        assert!(build_args(&job(tmp, None)).iter().all(|x| x != "--referer"));
+        assert!(build_args(&job(tmp, None), Some(720))
+            .iter()
+            .all(|x| x != "--referer"));
     }
 
     #[test]
     fn a_user_agent_is_passed_only_when_set() {
         let tmp = Path::new("/x");
         let mut j = job(tmp, None);
-        assert!(build_args(&j).iter().all(|x| x != "--user-agent"));
+        assert!(build_args(&j, Some(720))
+            .iter()
+            .all(|x| x != "--user-agent"));
         j.user_agent = Some("UA/1.0".into());
-        let a = build_args(&j);
+        let a = build_args(&j, Some(720));
         let at = a.iter().position(|x| x == "--user-agent").unwrap();
         assert_eq!(a[at + 1], "UA/1.0");
         assert!(at < a.len() - 2, "options come before the `--` separator");

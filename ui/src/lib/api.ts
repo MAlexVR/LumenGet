@@ -67,6 +67,8 @@ export interface Api {
   libraryPickRoot(): Promise<string | null>;
   librarySummary(path: string): Promise<LibrarySummary>;
   /** Android only: the bundled yt-dlp release and a refresh to the latest one. Reject with `{code, message}`. */
+  /** Highest video height course downloads use (`null`: best available). */
+  setDownloadQuality(maxHeight: number | null): Promise<void>;
   downloaderVersion(): Promise<{ version: string | null }>;
   downloaderUpdate(): Promise<{ status: "updated" | "current"; version: string | null }>;
   onLibraryRootChanged(cb: (e: { path: string | null }) => void): Promise<() => void>;
@@ -277,6 +279,7 @@ function tauriApi(): Api {
     libraryResetRoot: () => call("library_reset_root"),
     libraryPickRoot: () => call("library_pick_root"),
     librarySummary: (path) => call("library_summary", { path }),
+    setDownloadQuality: (maxHeight) => call("download_quality_set", { maxHeight }),
     downloaderVersion: () => call("downloader_version"),
     downloaderUpdate: () => call("downloader_update"),
     onLibraryRootChanged: (cb) => listenTo<{ path: string | null }>("library://root-changed", cb),

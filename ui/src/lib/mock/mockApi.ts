@@ -161,6 +161,7 @@ export function createMockApi(): Api {
       return res.ok ? res.text() : SAMPLE_DESCRIPTION;
     },
     openPath: async (path) => console.info("[mock] open", path),
+    setDownloadQuality: async (maxHeight) => console.info("[mock] quality", maxHeight ?? "best"),
     downloaderVersion: async () => ({ version: "2026.10.01" }),
     downloaderUpdate: async () => {
       await new Promise((resolve) => setTimeout(resolve, 600));

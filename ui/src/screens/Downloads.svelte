@@ -14,6 +14,7 @@
   import PluralsightFlow from "./sources/PluralsightFlow.svelte";
   import SkoolFlow from "./sources/SkoolFlow.svelte";
   import UdemyFlow from "./sources/UdemyFlow.svelte";
+  import QualityPicker from "./sources/QualityPicker.svelte";
   import YoutubeFlow from "./sources/YoutubeFlow.svelte";
 
   let { platform: platformId }: { platform: string | null } = $props();
@@ -42,6 +43,7 @@
         <p class="lede">{t(platform.id === "skool" ? "dl_lede" : platform.id === "hotmart" ? "hm_lede" : platform.id === "pluralsight" ? "ps_lede" : platform.id === "goldenlife" ? "gl_lede" : platform.id === "harbiz" ? "hb_lede" : platform.id === "udemy" ? "ud_lede" : "yt_lede")}</p>
       </div>
     </header>
+    {#if platform.id !== "youtube"}<QualityPicker />{/if}
     {#if platform.id === "skool"}<SkoolFlow />{:else if platform.id === "hotmart"}<HotmartFlow />{:else if platform.id === "pluralsight"}<PluralsightFlow />{:else if platform.id === "goldenlife"}<GoldenlifeFlow />{:else if platform.id === "harbiz"}<HarbizFlow />{:else if platform.id === "udemy"}<UdemyFlow />{:else}<YoutubeFlow />{/if}
   {:else if platform}
     <PlatformSoon {platform} />
@@ -50,6 +52,7 @@
       <h1>{t("downloads_title")}</h1>
       <p class="lede">{t("pf_lede")}</p>
     </header>
+    <QualityPicker />
     <PlatformGrid status="available" focusId={returnTo} />
     <PlatformGrid status="soon" focusId={returnTo} />
   {/if}

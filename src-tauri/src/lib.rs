@@ -333,6 +333,12 @@ async fn open_library_path(
     android_files::open_file(&app, &full).map_err(CommandError::Open)
 }
 
+/// Highest video height course downloads use; `None` takes the best available.
+#[tauri::command]
+fn download_quality_set(max_height: Option<u32>) {
+    lumen_download::ytdlp::set_max_height(max_height);
+}
+
 /// Installed yt-dlp release of the Android build.
 #[tauri::command]
 async fn downloader_version(
@@ -1302,6 +1308,7 @@ pub fn run() {
             lesson_workout_plan,
             open_library_path,
             open_library_folder,
+            download_quality_set,
             downloader_version,
             downloader_update,
             media_now_playing,
