@@ -7,6 +7,7 @@ describe("capabilitiesFor", () => {
       expect(capabilitiesFor(os)).toEqual({
         android: false,
         changeLibraryFolder: true,
+        openFolders: true,
         selfUpdate: true,
         musicControl: true,
       });
@@ -17,6 +18,7 @@ describe("capabilitiesFor", () => {
     expect(capabilitiesFor("android")).toEqual({
       android: true,
       changeLibraryFolder: false,
+      openFolders: false,
       selfUpdate: false,
       musicControl: false,
     });

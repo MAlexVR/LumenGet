@@ -1,3 +1,4 @@
+mod android_files;
 mod downloads;
 mod goldenlife;
 mod harbiz;
@@ -327,9 +328,7 @@ async fn open_library_path(
     core: State<'_, Arc<AppCore>>,
 ) -> Result<(), CommandError> {
     let full = core.library_path(&path)?;
-    app.opener()
-        .open_path(full.to_string_lossy(), None::<&str>)
-        .map_err(|e| CommandError::Open(e.to_string()))
+    android_files::open_file(&app, &full).map_err(CommandError::Open)
 }
 
 /// Opens the library root (`rel` empty) or a folder inside it with the system
@@ -1157,6 +1156,7 @@ fn media_tools(app_dir: &std::path::Path, cache_dir: &std::path::Path) -> MediaT
 pub fn run() {
     let result = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(android_files::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;

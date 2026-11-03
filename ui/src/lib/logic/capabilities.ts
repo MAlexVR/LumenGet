@@ -5,6 +5,8 @@ export interface Capabilities {
   android: boolean;
   /** Pick another library folder (Android keeps it in the app's own storage). */
   changeLibraryFolder: boolean;
+  /** Show a library folder in the system file manager (Android has none to open). */
+  openFolders: boolean;
   /** Download and install a new version from inside the app. */
   selfUpdate: boolean;
   /** Control the Spotify player through MPRIS (Linux desktop only for now). */
@@ -16,6 +18,7 @@ export function capabilitiesFor(os: string): Capabilities {
   return {
     android,
     changeLibraryFolder: !android,
+    openFolders: !android,
     selfUpdate: !android,
     musicControl: !android,
   };

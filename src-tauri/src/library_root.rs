@@ -84,13 +84,17 @@ impl RootInfo {
 
 /// Known library locations, best first. Android has no videos folder and the
 /// app cannot reach shared storage by path, so its library lives in the app's
-/// own storage.
+/// own `files` folder (the one the file provider can share from).
 pub fn default_candidates(
     videos: Option<PathBuf>,
     app_data: Option<PathBuf>,
     android: bool,
 ) -> Vec<PathBuf> {
-    let base = if android { app_data } else { videos };
+    let base = if android {
+        app_data.map(|dir| dir.join("files"))
+    } else {
+        videos
+    };
     base.map(|dir| vec![dir.join("Lumen")]).unwrap_or_default()
 }
 
@@ -265,7 +269,7 @@ mod tests {
             Some(PathBuf::from("/data/app")),
             true,
         );
-        assert_eq!(got, vec![PathBuf::from("/data/app/Lumen")]);
+        assert_eq!(got, vec![PathBuf::from("/data/app/files/Lumen")]);
         assert!(default_candidates(None, None, true).is_empty());
     }
 

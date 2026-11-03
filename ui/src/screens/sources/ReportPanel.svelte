@@ -2,6 +2,7 @@
   // Result of a finished download: state, counts and grouped issues.
   import Icon, { type IconName } from "../../lib/design/Icon.svelte";
   import { t, tn } from "../../lib/i18n/index.svelte";
+  import { app } from "../../lib/state/app.svelte";
   import type { DownloadEntry } from "../../lib/logic/downloads";
   import { issueNote, summarizeReport, type IssueGroup } from "../../lib/logic/report";
   import { displayTitle } from "../../lib/logic/title";
@@ -103,9 +104,11 @@
   {/if}
 
   <div class="actions">
-    <button type="button" class="btn btn-quiet" onclick={onopen}>
-      <Icon name="file" size={16} />{t("dl_open_folder")}
-    </button>
+    {#if app.capabilities.openFolders}
+      <button type="button" class="btn btn-quiet" onclick={onopen}>
+        <Icon name="file" size={16} />{t("dl_open_folder")}
+      </button>
+    {/if}
     {#if summary.state === "errors" || summary.state === "cancelled"}
       <button type="button" class="btn btn-quiet" onclick={onretry}>{t("dl_retry")}</button>
     {/if}
