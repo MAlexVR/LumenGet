@@ -3,6 +3,17 @@
 All notable changes to LumenGet. Format based on [Keep a Changelog](https://keepachangelog.com/); versions follow semver.
 Each release's notes and its git tag message are taken from the matching section (see `scripts/changelog-section.sh`).
 
+## [0.7.0] - 2026-11-03
+
+### Added
+
+- **LumenGet for Android, made for tablets** (64-bit ARM, Android 7.0 or newer). It plays and keeps your library, downloads from every platform (Skool, Hotmart, YouTube, Udemy, Pluralsight, Golden Life, Harbiz) and shows video thumbnails, with larger touch targets, the player controls coming back with a tap, and the layout adapted to landscape and portrait. The library lives inside the app's own storage. The Android build ships its own yt-dlp, Python and ffmpeg, and Settings → Downloader updates yt-dlp. Attachments open with the apps installed on the tablet.
+- The Android build is distributed under the **GPL-3.0** because it bundles GPL components (`docs/ANDROID_LICENSE.md`). The Windows and Linux builds stay MIT. Build and signing notes: `docs/ANDROID.md`.
+
+### Changed
+
+- Nothing changes for Windows and Linux users. Internally the app now builds as a mobile library too, and the thumbnail service can run ffmpeg with its own environment.
+
 ## [0.6.9] - 2026-11-02
 
 ### Changed
