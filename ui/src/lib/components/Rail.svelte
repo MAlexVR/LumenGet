@@ -40,7 +40,7 @@
   onmouseleave={() => (peek = false)}
 >
   <a class="brand" href="#/" aria-label="LumenGet">
-    <BrandMark size={28} />
+    <BrandMark size={32} />
     <span class="wordmark">LumenGet</span>
   </a>
   <ul>
