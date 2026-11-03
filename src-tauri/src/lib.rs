@@ -1389,6 +1389,26 @@ mod tests {
         }
     }
 
+    /// Tauri embeds the first PNG of `bundle.icon` as the window icon and reads
+    /// it as 8-bit RGBA; a 16-bit PNG there aborts the app at start on Android.
+    #[test]
+    fn the_android_window_icon_is_an_8_bit_rgba_png() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let conf = std::fs::read_to_string(root.join("tauri.android.conf.json")).unwrap();
+        let conf: serde_json::Value = serde_json::from_str(&conf).unwrap();
+        let first_png = conf["bundle"]["icon"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|icon| icon.as_str())
+            .find(|icon| icon.ends_with(".png"))
+            .unwrap();
+        let png = std::fs::read(root.join(first_png)).unwrap();
+        assert_eq!(&png[1..4], b"PNG");
+        // IHDR: bit depth at byte 24, colour type at byte 25 (6 = RGBA).
+        assert_eq!((png[24], png[25]), (8, 6), "{first_png}");
+    }
+
     #[test]
     fn app_info_reports_name_and_version() {
         let info = app_info_value();
