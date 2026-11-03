@@ -17,6 +17,8 @@ async-trait = "0.1"
 axum = { version = "0.8", default-features = false, features = ["http1", "tokio"], optional = true }
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
 lumen-core.workspace = true
+rustls = { version = "0.23", default-features = false, features = ["aws_lc_rs", "std", "tls12"] }
+webpki-roots = "0.26"
 reqwest = { version = "0.13", default-features = false, features = ["rustls", "stream", "charset"] }
 serde_json.workspace = true
 thiserror.workspace = true

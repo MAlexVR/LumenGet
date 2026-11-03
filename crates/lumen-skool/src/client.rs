@@ -83,7 +83,7 @@ impl SkoolClient {
         let mut cookie = HeaderValue::from_str(cookie_header)
             .map_err(|_| SkoolError::Cookie("the cookie header has invalid characters".into()))?;
         cookie.set_sensitive(true);
-        let http = reqwest::Client::builder()
+        let http = lumen_download::client_builder()
             .connect_timeout(Duration::from_secs(15))
             .read_timeout(Duration::from_secs(60))
             .build()

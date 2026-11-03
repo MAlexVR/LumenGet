@@ -2,6 +2,7 @@ package com.malexvr.lumen
 
 import android.app.Activity
 import android.content.Intent
+import android.util.Log
 import android.webkit.CookieManager
 import app.tauri.annotation.Command
 import app.tauri.annotation.InvokeArg
@@ -23,16 +24,20 @@ class LoginPlugin(private val activity: Activity) : Plugin(activity) {
   fun open(invoke: Invoke) {
     try {
       val url = invoke.parseArgs(UrlArgs::class.java).url
+      LoginActivity.active = true
       activity.startActivity(Intent(activity, LoginActivity::class.java).putExtra(LoginActivity.URL, url))
       invoke.resolve()
     } catch (e: Exception) {
+      LoginActivity.active = false
       invoke.reject(e.message)
     }
   }
 
   @Command
   fun isOpen(invoke: Invoke) {
-    invoke.resolve(JSObject().put("open", LoginActivity.current != null))
+    val open = LoginActivity.active
+    if (BuildConfig.DEBUG) Log.d("LumenGet", "isOpen -> $open")
+    invoke.resolve(JSObject().put("open", open))
   }
 
   @Command
@@ -42,6 +47,11 @@ class LoginPlugin(private val activity: Activity) : Plugin(activity) {
       activity.runOnUiThread {
         // getCookie answers null while the jar is empty.
         val header = CookieManager.getInstance().getCookie(url) ?: ""
+        if (BuildConfig.DEBUG) {
+          // Names only: the values are the credentials.
+          val names = header.split(';').map { it.substringBefore('=').trim() }.filter { it.isNotEmpty() }
+          Log.d("LumenGet", "cookies of ${url.substringBefore('?')}: ${names.joinToString(",")}")
+        }
         invoke.resolve(JSObject().put("header", header))
       }
     } catch (e: Exception) {

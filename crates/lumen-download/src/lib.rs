@@ -13,8 +13,10 @@ pub mod report;
 #[cfg(any(test, feature = "test-support"))]
 #[allow(clippy::unwrap_used)] // test double: panicking on a broken fixture is the point
 pub mod testsrv;
+pub mod tls;
 pub mod ytdlp;
 
 pub use http::{FetchError, RetryPolicy};
 pub use pause::wait_if_paused;
+pub use tls::client_builder;
 pub use ytdlp::{locate_ffmpeg, MediaJob, MediaTool, VideoError, VideoJob, VideoRunner, YtDlp};

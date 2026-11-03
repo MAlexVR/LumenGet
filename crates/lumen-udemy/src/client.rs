@@ -160,7 +160,7 @@ impl UdemyClient {
     }
 
     pub fn with_config(creds: Credentials, config: ClientConfig) -> Self {
-        let http = reqwest::Client::builder()
+        let http = lumen_download::client_builder()
             .connect_timeout(Duration::from_secs(15))
             .read_timeout(Duration::from_secs(60))
             .build()

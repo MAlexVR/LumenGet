@@ -585,7 +585,7 @@ impl UpdateService {
                 )
             })?;
         let policy = self.policy.clone();
-        let client = reqwest::Client::builder()
+        let client = lumen_download::client_builder()
             .connect_timeout(Duration::from_secs(15))
             .redirect(reqwest::redirect::Policy::custom(move |attempt| {
                 if attempt.previous().len() >= MAX_REDIRECTS || !policy.allows(attempt.url()) {

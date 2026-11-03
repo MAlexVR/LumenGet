@@ -139,7 +139,7 @@ impl PluralsightClient {
                 value.set_sensitive(true);
                 value
             });
-        let http = reqwest::Client::builder()
+        let http = lumen_download::client_builder()
             .connect_timeout(config.connect_timeout)
             .timeout(config.request_timeout)
             .redirect(reqwest::redirect::Policy::none())

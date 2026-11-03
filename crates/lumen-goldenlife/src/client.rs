@@ -186,7 +186,7 @@ impl GoldenlifeClient {
                 "base URL must be an HTTPS origin (HTTP is allowed only for loopback tests)",
             ));
         }
-        let http = reqwest::Client::builder()
+        let http = lumen_download::client_builder()
             .connect_timeout(config.connect_timeout)
             .timeout(config.request_timeout)
             .redirect(reqwest::redirect::Policy::none())

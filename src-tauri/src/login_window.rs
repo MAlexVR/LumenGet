@@ -125,7 +125,10 @@ mod window {
             .0
             .run_mobile_plugin::<OpenState>("isOpen", ())
             .map(|state| state.open)
-            .unwrap_or(false)
+            .unwrap_or_else(|e| {
+                eprintln!("login screen state unavailable: {e}");
+                false
+            })
     }
 
     pub async fn cookies<R: Runtime>(

@@ -26,6 +26,11 @@ class LoginActivity : Activity() {
 
     @Volatile
     var current: LoginActivity? = null
+
+    // True from the request to open the screen until it is gone: the screen takes
+    // a moment to be created, and Rust asks right away whether it is still open.
+    @Volatile
+    var active = false
   }
 
   private var web: WebView? = null
@@ -34,6 +39,7 @@ class LoginActivity : Activity() {
     super.onCreate(savedInstanceState)
     val url = intent.getStringExtra(URL)
     if (url == null) {
+      active = false
       finish()
       return
     }
@@ -87,7 +93,10 @@ class LoginActivity : Activity() {
   }
 
   override fun onDestroy() {
-    if (current === this) current = null
+    if (current === this) {
+      current = null
+      active = false
+    }
     web?.destroy()
     web = null
     super.onDestroy()

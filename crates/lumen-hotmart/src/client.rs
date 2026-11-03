@@ -131,7 +131,7 @@ impl HotmartClient {
         if let Some(c) = creds.cookies() {
             header_value(c, "the cookies")?;
         }
-        let http = reqwest::Client::builder()
+        let http = lumen_download::client_builder()
             .connect_timeout(Duration::from_secs(15))
             .read_timeout(Duration::from_secs(60))
             .build()

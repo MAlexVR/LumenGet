@@ -2339,10 +2339,12 @@ dependencies = [
  "futures-util",
  "lumen-core",
  "reqwest",
+ "rustls",
  "serde_json",
  "tempfile",
  "thiserror 2.0.21",
  "tokio",
+ "webpki-roots 0.26.11",
 ]
 
 [[package]]

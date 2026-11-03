@@ -472,7 +472,7 @@ impl UpdateService {
             "{}/repos/{UPDATE_REPO}/releases?per_page={RELEASES_PER_PAGE}",
             self.base
         );
-        let client = reqwest::Client::builder()
+        let client = lumen_download::client_builder()
             .timeout(self.timeout)
             .build()
             .map_err(|e| err(ErrorCode::Internal, e.without_url().to_string()))?;
