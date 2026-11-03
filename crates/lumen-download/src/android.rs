@@ -61,6 +61,15 @@ impl AndroidRuntime {
             .join("lib")
     }
 
+    /// Environment ffmpeg needs when it is started on its own (thumbnails):
+    /// its shared libraries are not in a system folder.
+    pub fn ffmpeg_envs(&self) -> Vec<(String, String)> {
+        vec![(
+            "LD_LIBRARY_PATH".to_string(),
+            self.ffmpeg_libs().display().to_string(),
+        )]
+    }
+
     /// yt-dlp run by the bundled Python, with the environment it expects.
     pub fn ytdlp(&self) -> YtDlp {
         let python_home = self.python_home();
@@ -139,6 +148,18 @@ mod tests {
         assert_eq!(
             runtime().ffmpeg(),
             PathBuf::from("/data/app/pkg/lib/arm64/libffmpeg.so")
+        );
+    }
+
+    #[test]
+    fn ffmpeg_environment_points_at_its_unpacked_libraries() {
+        assert_eq!(
+            runtime().ffmpeg_envs(),
+            vec![(
+                "LD_LIBRARY_PATH".to_string(),
+                "/data/user/0/com.malexvr.lumen/no_backup/youtubedl-android/packages/ffmpeg/usr/lib"
+                    .to_string()
+            )]
         );
     }
 

@@ -29,6 +29,9 @@ pub struct ThumbConfig {
     pub cache_dir: PathBuf,
     /// ffmpeg binary; `None` makes every request `unavailable`.
     pub ffmpeg: Option<PathBuf>,
+    /// Extra environment for the ffmpeg process (Android needs the library
+    /// path of its bundled build).
+    pub ffmpeg_envs: Vec<(String, String)>,
     /// Concurrent ffmpeg processes.
     pub workers: usize,
     /// Per ffmpeg run, then it is killed.
@@ -39,10 +42,15 @@ pub struct ThumbConfig {
 }
 
 impl ThumbConfig {
-    pub fn new(cache_dir: PathBuf, ffmpeg: Option<PathBuf>) -> Self {
+    pub fn new(
+        cache_dir: PathBuf,
+        ffmpeg: Option<PathBuf>,
+        ffmpeg_envs: Vec<(String, String)>,
+    ) -> Self {
         Self {
             cache_dir,
             ffmpeg,
+            ffmpeg_envs,
             workers: 2,
             timeout: Duration::from_secs(15),
             cap_bytes: 300 * 1024 * 1024,
@@ -227,6 +235,7 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 async fn run_ffmpeg(
     ffmpeg: &Path,
+    envs: &[(String, String)],
     input: &Path,
     at: f64,
     width: u32,
@@ -235,7 +244,8 @@ async fn run_ffmpeg(
 ) -> Attempt {
     let _ = std::fs::remove_file(part);
     let mut cmd = Command::new(ffmpeg);
-    cmd.args(["-nostdin", "-hide_banner", "-loglevel", "error", "-ss"])
+    cmd.envs(envs.iter().map(|(k, v)| (k, v)))
+        .args(["-nostdin", "-hide_banner", "-loglevel", "error", "-ss"])
         .arg(format!("{at}"))
         .arg("-i")
         .arg(input)
@@ -284,7 +294,17 @@ async fn make(inner: &Inner, job: &Job) -> Result<String, String> {
     let part = dir.join(format!("{}.part.jpg", job.key));
     let mut at = job.at;
     loop {
-        match run_ffmpeg(ffmpeg, &job.full, at, job.width, &part, inner.cfg.timeout).await {
+        match run_ffmpeg(
+            ffmpeg,
+            &inner.cfg.ffmpeg_envs,
+            &job.full,
+            at,
+            job.width,
+            &part,
+            inner.cfg.timeout,
+        )
+        .await
+        {
             Attempt::Produced => break,
             Attempt::Failed(reason) => return Err(reason.to_string()),
             Attempt::Empty if at > 0.0 => at = 0.0,
@@ -517,6 +537,7 @@ printf 'end\n' >> '{log}'
         ThumbConfig {
             cache_dir: e.cache.clone(),
             ffmpeg: Some(e.bin.clone()),
+            ffmpeg_envs: Vec::new(),
             workers: 2,
             timeout: Duration::from_secs(10),
             cap_bytes: 300 * 1024 * 1024,
@@ -588,6 +609,21 @@ printf 'end\n' >> '{log}'
         ] {
             assert_ne!(base, other);
         }
+    }
+
+    #[tokio::test]
+    async fn ffmpeg_runs_with_the_configured_environment() {
+        let e = env(r#"printf '%s' "$LUMEN_FAKE_LIBS" > "$out""#);
+        let mut c = cfg(&e);
+        c.ffmpeg_envs = vec![("LUMEN_FAKE_LIBS".to_string(), "/bundled/libs".to_string())];
+        let (svc, mut rx) = service(c);
+        svc.request(&e.root, &[item("Skool/G/a.mp4")], None);
+        let ev = done(&mut rx, 1).await;
+        let file = ev[0].result.clone().unwrap();
+        assert_eq!(
+            std::fs::read_to_string(e.cache.join(file)).unwrap(),
+            "/bundled/libs"
+        );
     }
 
     #[tokio::test]
@@ -988,7 +1024,11 @@ printf 'end\n' >> '{log}'
             .find(|p| p.is_file())
             .expect("ffmpeg on PATH");
         let tmp = tempfile::tempdir().unwrap();
-        let (svc, mut rx) = service(ThumbConfig::new(tmp.path().join("thumbs"), Some(ffmpeg)));
+        let (svc, mut rx) = service(ThumbConfig::new(
+            tmp.path().join("thumbs"),
+            Some(ffmpeg),
+            Vec::new(),
+        ));
         let t = std::time::Instant::now();
         svc.request(&root, &[item(&rel)], None);
         let ev = done(&mut rx, 1).await;

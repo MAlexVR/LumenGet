@@ -98,12 +98,13 @@ impl Thumbnails {
         core: Arc<AppCore>,
         cache_dir: PathBuf,
         ffmpeg: Option<PathBuf>,
+        ffmpeg_envs: Vec<(String, String)>,
         emit: Emit,
     ) -> Self {
         core.set_thumb_dir(&cache_dir);
         let announcer = Arc::clone(&core);
         let service = ThumbService::new(
-            ThumbConfig::new(cache_dir, ffmpeg),
+            ThumbConfig::new(cache_dir, ffmpeg, ffmpeg_envs),
             Arc::new(move |done| emit(READY_EVENT, done_payload(&announcer.thumb_base(), &done))),
         );
         Self { core, service }
@@ -194,6 +195,7 @@ mod tests {
             Arc::clone(&core),
             tmp.path().join("cache/thumbs"),
             ffmpeg,
+            Vec::new(),
             Arc::new(move |name, payload| {
                 sink.lock()
                     .unwrap()
