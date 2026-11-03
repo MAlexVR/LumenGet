@@ -438,8 +438,16 @@ pub trait Trasher: Send + Sync {
 pub struct SystemTrash;
 
 impl Trasher for SystemTrash {
+    #[cfg(not(target_os = "android"))]
     fn trash(&self, path: &Path) -> Result<(), String> {
         trash::delete(path).map_err(|e| e.to_string())
+    }
+
+    /// Android has no trash: failing keeps the item, and the UI offers the
+    /// separately confirmed permanent delete.
+    #[cfg(target_os = "android")]
+    fn trash(&self, _path: &Path) -> Result<(), String> {
+        Err("the trash is not available on Android".to_string())
     }
 }
 

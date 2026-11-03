@@ -48,7 +48,6 @@ use serde::Serialize;
 use skool::{header_from_jar, DefaultFactory, LoginOutcome, SkoolCommandError, SkoolService};
 use state::{AppCore, CommandError, RootPolicy};
 use tauri::{AppHandle, Emitter, Manager, State, Url, WebviewUrl, WebviewWindowBuilder};
-use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 use thumbs::{CancelRequest, ThumbInfo, Thumbnails, ThumbsRequest, ThumbsStatus};
 use udemy::{DiagnoseOutcome, LoginOutcome as UdemyLoginOutcome, UdemyService};
@@ -163,7 +162,17 @@ async fn library_pick_root(
         .map_err(|e| CommandError::DataDir(std::io::Error::other(e)))
 }
 
+/// Android hands out `content://` URIs, not paths the library can be rebuilt
+/// from, so there the library stays in the app's own storage and the picker
+/// answers as if cancelled.
+#[cfg(target_os = "android")]
+fn pick_folder(_app: &AppHandle, _start: Option<PathBuf>) -> Option<String> {
+    None
+}
+
+#[cfg(not(target_os = "android"))]
 fn pick_folder(app: &AppHandle, start: Option<PathBuf>) -> Option<String> {
+    use tauri_plugin_dialog::DialogExt;
     let mut dialog = app
         .dialog()
         .file()
@@ -1082,6 +1091,7 @@ fn sidecar_dir() -> Option<PathBuf> {
     std::env::current_exe().ok()?.parent().map(PathBuf::from)
 }
 
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let result = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
