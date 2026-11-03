@@ -15,4 +15,4 @@ pub use client::{ClientConfig, Endpoints, HotmartClient};
 pub use credentials::Credentials;
 pub use downloader::Retry;
 pub use error::HotmartError;
-pub use platform::{CourseInfo, HotmartApi, HotmartPlatform};
+pub use platform::{CourseInfo, HotmartApi, HotmartPlatform, LessonInfo};

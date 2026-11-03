@@ -696,6 +696,7 @@ mod tests {
             cancel,
             options: DownloadOptions {
                 max_parallel_lessons: parallel,
+                ..DownloadOptions::default()
             },
         }
         .run(&group(), root.path())
@@ -792,6 +793,7 @@ mod tests {
             cancel: &CancelFlag::new(),
             options: DownloadOptions {
                 max_parallel_lessons: 1,
+                ..DownloadOptions::default()
             },
         }
         .run(&group(), root.path())

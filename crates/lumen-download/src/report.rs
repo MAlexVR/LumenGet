@@ -33,6 +33,17 @@ pub fn set_complete(group_dir: &Path, complete: bool) -> io::Result<()> {
 /// I/O failures are never swallowed: they become `Course` error issues and the
 /// report is re-evaluated. Returns after `report.complete` is final.
 pub fn finalize_folder(dir: &Path, report: &mut DownloadReport) {
+    finalize(dir, report, true);
+}
+
+/// Like [`finalize_folder`] for a run of only some lessons of a course: the
+/// report is written, but the `.complete` marker is never touched, because the
+/// rest of the course was not looked at.
+pub fn finalize_selection(dir: &Path, report: &mut DownloadReport) {
+    finalize(dir, report, false);
+}
+
+fn finalize(dir: &Path, report: &mut DownloadReport, update_marker: bool) {
     report.finish();
     if let Err(e) = write_report(dir, report) {
         report.push(Issue::error(
@@ -43,7 +54,7 @@ pub fn finalize_folder(dir: &Path, report: &mut DownloadReport) {
         ));
         report.finish();
     }
-    if !report.cancelled {
+    if update_marker && !report.cancelled {
         if let Err(e) = set_complete(dir, report.complete) {
             report.push(Issue::error(
                 IssueKind::Course,

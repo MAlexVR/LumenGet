@@ -632,6 +632,7 @@ mod tests {
             cancel: &cancel,
             options: DownloadOptions {
                 max_parallel_lessons: parallel,
+                ..DownloadOptions::default()
             },
             retry: Retry {
                 attempts: 3,

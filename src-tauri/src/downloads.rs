@@ -62,6 +62,8 @@ pub enum ErrorCode {
     ManualInstallRequired,
     /// The operation was cancelled by the user.
     Cancelled,
+    /// Hotmart: a download of chosen lessons was started with none chosen.
+    NoLessons,
     /// A file could not be written.
     Disk,
     /// Update: the running version is already the newest.
@@ -275,16 +277,29 @@ impl DownloadManager {
         library_root: PathBuf,
         events: Arc<dyn DownloadEvents>,
     ) -> Result<String, CommandError> {
+        self.start_with_options(
+            group,
+            platform,
+            library_root,
+            DownloadOptions::default(),
+            events,
+        )
+    }
+
+    /// [`Self::start`] with explicit options (for example the only lessons
+    /// to download).
+    pub fn start_with_options(
+        &self,
+        group: &str,
+        platform: Arc<dyn CoursePlatform>,
+        library_root: PathBuf,
+        options: DownloadOptions,
+        events: Arc<dyn DownloadEvents>,
+    ) -> Result<String, CommandError> {
         let slug = group.to_string();
         self.start_task(group, events, move |sink, cancel| async move {
             platform
-                .download_group(
-                    &slug,
-                    &library_root,
-                    &DownloadOptions::default(),
-                    sink.as_ref(),
-                    &cancel,
-                )
+                .download_group(&slug, &library_root, &options, sink.as_ref(), &cancel)
                 .await
         })
     }

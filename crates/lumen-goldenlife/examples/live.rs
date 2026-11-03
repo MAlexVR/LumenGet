@@ -157,6 +157,7 @@ async fn download(
             cancel: &cancel,
             options: DownloadOptions {
                 max_parallel_lessons: 2,
+                ..DownloadOptions::default()
             },
             retry: Retry::default(),
         }

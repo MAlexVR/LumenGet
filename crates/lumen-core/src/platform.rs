@@ -24,12 +24,17 @@ pub struct PlatformGroup {
 pub struct DownloadOptions {
     /// Lessons processed at once. 1 keeps the sequential behaviour.
     pub max_parallel_lessons: usize,
+    /// Positions (0-based, in course order) of the only lessons to download;
+    /// `None` downloads the whole course. Used by platforms that can list a
+    /// course's lessons before downloading.
+    pub only_lessons: Option<Vec<usize>>,
 }
 
 impl Default for DownloadOptions {
     fn default() -> Self {
         Self {
             max_parallel_lessons: 1,
+            only_lessons: None,
         }
     }
 }

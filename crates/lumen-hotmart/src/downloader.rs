@@ -16,7 +16,7 @@ use lumen_core::{
 };
 use lumen_download::files::finished_file_exists;
 use lumen_download::layout::path_units;
-use lumen_download::report::finalize_folder;
+use lumen_download::report::{finalize_folder, finalize_selection};
 use lumen_download::{VideoError, VideoJob, VideoRunner};
 
 use crate::client::{HotmartClient, BROWSER_UA};
@@ -220,9 +220,34 @@ impl CourseDownloader<'_> {
         std::fs::create_dir_all(&dir).map_err(|e| io_err(&e))?;
         remove_part_files(&dir);
 
-        let plan = plan_course(&dir, &nav);
+        let mut plan = plan_course(&dir, &nav);
         let mut report = DownloadReport::new(PLATFORM_ID, &course.name);
-        if plan.is_empty() {
+        let partial = self.options.only_lessons.is_some();
+        if let Some(only) = &self.options.only_lessons {
+            let missing: Vec<String> = only
+                .iter()
+                .filter(|n| **n >= plan.len())
+                .map(|n| (n + 1).to_string())
+                .collect();
+            if !missing.is_empty() {
+                report.push(Issue::error(
+                    IssueKind::Course,
+                    None,
+                    None,
+                    format!("chosen lessons not in the course: {}", missing.join(", ")),
+                ));
+            }
+            if only.is_empty() {
+                report.push(Issue::error(
+                    IssueKind::Course,
+                    None,
+                    None,
+                    "no lessons were chosen",
+                ));
+            }
+            plan.retain(|lesson| only.contains(&lesson.order));
+        }
+        if plan.is_empty() && !partial {
             report.push(Issue::error(
                 IssueKind::Course,
                 None,
@@ -265,7 +290,11 @@ impl CourseDownloader<'_> {
             ));
         }
         report.cancelled = self.cancel.is_cancelled();
-        finalize_folder(&dir, &mut report);
+        if partial {
+            finalize_selection(&dir, &mut report);
+        } else {
+            finalize_folder(&dir, &mut report);
+        }
         self.sink.on_report(&report);
         Ok(report)
     }
@@ -873,11 +902,35 @@ mod tests {
             cancel,
             options: DownloadOptions {
                 max_parallel_lessons: parallel,
+                ..DownloadOptions::default()
             },
             retry: quick(),
         };
         let r = d.run(&course(), root).await;
         (r, sink)
+    }
+
+    async fn run_only(
+        source: &FakeSource,
+        videos: &FakeVideo,
+        root: &Path,
+        only: Vec<usize>,
+    ) -> (DownloadReport, Collect) {
+        let sink = Collect::default();
+        let cancel = CancelFlag::new();
+        let d = CourseDownloader {
+            source,
+            videos,
+            sink: &sink,
+            cancel: &cancel,
+            options: DownloadOptions {
+                only_lessons: Some(only),
+                ..DownloadOptions::default()
+            },
+            retry: quick(),
+        };
+        let report = d.run(&course(), root).await.unwrap();
+        (report, sink)
     }
 
     async fn run(source: &FakeSource, videos: &FakeVideo, root: &Path) -> DownloadReport {
@@ -1139,6 +1192,44 @@ mod tests {
         let report = run(&source, &FakeVideo::default(), tmp.path()).await;
         assert!(report.complete, "{:?}", report.issues);
         assert_eq!(source.count("lesson:h1"), 2);
+    }
+
+    #[tokio::test]
+    async fn only_the_chosen_lessons_are_downloaded_and_the_course_is_not_marked_complete() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = FakeSource {
+            nav: Some(Ok(nav(&[("h1", "A"), ("h2", "B"), ("h3", "C")]))),
+            ..FakeSource::default()
+        };
+        source.lesson_data("h2", vec![Ok(simple_lesson("<p>b</p>"))]);
+        let (report, sink) = run_only(&source, &FakeVideo::default(), tmp.path(), vec![1]).await;
+        assert!(report.issues.is_empty(), "{:?}", report.issues);
+        assert_eq!((report.total_lessons, report.completed_lessons), (1, 1));
+        assert_eq!(source.count("lesson:"), 1);
+        assert_eq!(source.count("lesson:h2"), 1);
+        assert!(lesson_dir(tmp.path(), 2, "B").is_dir());
+        assert!(!lesson_dir(tmp.path(), 1, "A").exists());
+        assert!(!lesson_dir(tmp.path(), 3, "C").exists());
+        assert!(!tmp
+            .path()
+            .join("Hotmart/Horizonte - Marta/.complete")
+            .exists());
+        let progress = sink.progress.lock().unwrap();
+        assert!(!progress.is_empty() && progress.iter().all(|p| p.total == 1));
+    }
+
+    #[tokio::test]
+    async fn a_chosen_lesson_that_does_not_exist_is_reported_not_skipped() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = FakeSource {
+            nav: Some(Ok(nav(&[("h1", "A")]))),
+            ..FakeSource::default()
+        };
+        let (report, _) = run_only(&source, &FakeVideo::default(), tmp.path(), vec![7]).await;
+        assert!(!report.complete);
+        assert_eq!(report.issues[0].kind, IssueKind::Course);
+        assert!(report.issues[0].message.contains("not in the course"));
+        assert_eq!(source.count("lesson:"), 0);
     }
 
     #[tokio::test]

@@ -636,17 +636,35 @@ async fn hotmart_courses(
     hotmart.courses().await
 }
 
+/// The lessons of a purchased course (its product id), to choose from.
+#[tauri::command]
+async fn hotmart_course_lessons(
+    course: String,
+    hotmart: State<'_, Arc<HotmartService>>,
+) -> Result<Vec<lumen_hotmart::LessonInfo>, DownloadError> {
+    hotmart.lessons(&course).await
+}
+
 /// Starts a background download of a course (its product id) into the
-/// current library folder and returns its id. Progress and the final report
-/// arrive as `download://progress` / `download://report` events.
+/// current library folder and returns its id. With `lessons` (positions from
+/// `hotmart_course_lessons`) only those lessons are downloaded. Progress and
+/// the final report arrive as `download://progress` / `download://report`
+/// events.
 #[tauri::command]
 async fn hotmart_download_start(
     course: String,
+    lessons: Option<Vec<usize>>,
     app: AppHandle,
     core: State<'_, Arc<AppCore>>,
     hotmart: State<'_, Arc<HotmartService>>,
 ) -> Result<String, DownloadError> {
-    hotmart.start_download(&course, core.library_root(), Arc::new(TauriEvents { app }))
+    let events = Arc::new(TauriEvents { app });
+    match lessons {
+        Some(lessons) => {
+            hotmart.start_download_lessons(&course, lessons, core.library_root(), events)
+        }
+        None => hotmart.start_download(&course, core.library_root(), events),
+    }
 }
 
 #[tauri::command]
@@ -1298,6 +1316,7 @@ pub fn run() {
             hotmart_session_status,
             hotmart_logout,
             hotmart_courses,
+            hotmart_course_lessons,
             hotmart_download_start,
             hotmart_download_cancel,
             hotmart_downloads_running,

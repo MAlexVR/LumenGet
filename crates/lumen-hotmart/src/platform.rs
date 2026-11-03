@@ -50,9 +50,22 @@ impl CourseInfo {
 }
 
 /// The port plus the Hotmart-specific course listing.
+/// One lesson of a course as the UI lists it for choosing: `order` is its
+/// position in the course (0-based), the value `only_lessons` takes.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LessonInfo {
+    pub order: usize,
+    pub module: String,
+    pub title: String,
+}
+
 #[async_trait]
 pub trait HotmartApi: CoursePlatform {
     async fn courses(&self) -> Result<Vec<CourseInfo>, PlatformError>;
+
+    /// Every lesson of `course_id`, in the order a full download follows.
+    async fn lessons(&self, course_id: &str) -> Result<Vec<LessonInfo>, PlatformError>;
 }
 
 pub struct HotmartPlatform {
@@ -139,6 +152,31 @@ impl HotmartApi for HotmartPlatform {
             .courses
             .iter()
             .map(CourseInfo::from_course)
+            .collect())
+    }
+
+    async fn lessons(&self, course_id: &str) -> Result<Vec<LessonInfo>, PlatformError> {
+        let course = self
+            .client
+            .courses()
+            .await?
+            .courses
+            .into_iter()
+            .find(|c| c.id == course_id)
+            .ok_or_else(|| {
+                PlatformError::InvalidInput(format!("unknown course \"{course_id}\""))
+            })?;
+        let nav = self.client.navigation(&course).await?;
+        Ok(nav
+            .modules
+            .iter()
+            .flat_map(|module| module.pages.iter().map(move |page| (module, page)))
+            .enumerate()
+            .map(|(order, (module, page))| LessonInfo {
+                order,
+                module: module.name.clone(),
+                title: page.name.clone(),
+            })
             .collect())
     }
 }
@@ -254,6 +292,59 @@ mod tests {
         assert_eq!(json["coverUrl"], "https://cdn.example.test/horizonte.jpg");
         assert_eq!(json["purchaseDate"], "2024-03-09");
         assert_eq!(json["id"], "1001");
+    }
+
+    #[tokio::test]
+    async fn lessons_list_every_page_in_course_order() {
+        let srv = TestServer::start(site).await;
+        let lessons = platform(&srv, Arc::default())
+            .lessons("1001")
+            .await
+            .unwrap();
+        assert_eq!(
+            lessons,
+            vec![LessonInfo {
+                order: 0,
+                module: "Start".to_string(),
+                title: "Welcome".to_string()
+            }]
+        );
+        let json = serde_json::to_value(&lessons[0]).unwrap();
+        assert_eq!(json["order"], 0);
+        assert_eq!(json["module"], "Start");
+        assert_eq!(json["title"], "Welcome");
+    }
+
+    #[tokio::test]
+    async fn lessons_of_an_unknown_course_are_an_invalid_input() {
+        let srv = TestServer::start(site).await;
+        let err = platform(&srv, Arc::default())
+            .lessons("999")
+            .await
+            .unwrap_err();
+        assert!(matches!(err, PlatformError::InvalidInput(_)), "{err:?}");
+    }
+
+    #[tokio::test]
+    async fn download_group_with_a_selection_downloads_only_that_lesson() {
+        let srv = TestServer::start(site).await;
+        let p = platform(&srv, Arc::default());
+        let tmp = tempfile::tempdir().unwrap();
+        let options = DownloadOptions {
+            only_lessons: Some(vec![0]),
+            ..DownloadOptions::default()
+        };
+        let report = p
+            .download_group("1001", tmp.path(), &options, &NullSink, &CancelFlag::new())
+            .await
+            .unwrap();
+        assert!(report.issues.is_empty(), "{:?}", report.issues);
+        assert_eq!(report.total_lessons, 1);
+        let course = tmp.path().join("Hotmart/METODO HORIZONTE - Marta Ledesma");
+        assert!(course
+            .join("1. Start/1. Welcome/Description.html")
+            .is_file());
+        assert!(!course.join(".complete").exists());
     }
 
     #[tokio::test]

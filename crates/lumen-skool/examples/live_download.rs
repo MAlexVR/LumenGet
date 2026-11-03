@@ -92,6 +92,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         cancel: &cancel,
         options: DownloadOptions {
             max_parallel_lessons: 2,
+            ..DownloadOptions::default()
         },
     }
     .run(&group, Path::new(&out))

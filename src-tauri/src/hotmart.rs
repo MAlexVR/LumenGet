@@ -5,10 +5,12 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use lumen_core::PlatformError;
+use lumen_core::{DownloadOptions, PlatformError};
 use lumen_download::{VideoRunner, YtDlp};
 use lumen_hotmart::credentials::TOKEN_COOKIE;
-use lumen_hotmart::{CourseInfo, Credentials, HotmartApi, HotmartClient, HotmartPlatform};
+use lumen_hotmart::{
+    CourseInfo, Credentials, HotmartApi, HotmartClient, HotmartPlatform, LessonInfo,
+};
 use serde::Serialize;
 
 use crate::downloads::{
@@ -151,6 +153,51 @@ impl HotmartService {
         library_root: PathBuf,
         events: Arc<dyn DownloadEvents>,
     ) -> Result<String, CommandError> {
+        self.start(course_id, DownloadOptions::default(), library_root, events)
+    }
+
+    /// Every lesson of a course (product id), to choose from.
+    pub async fn lessons(&self, course_id: &str) -> Result<Vec<LessonInfo>, CommandError> {
+        let creds = self.credentials()?;
+        self.factory
+            .build(&creds)
+            .map_err(map)?
+            .lessons(course_id)
+            .await
+            .map_err(map)
+    }
+
+    /// Like [`Self::start_download`] for only the chosen lessons (positions
+    /// from [`Self::lessons`]); the course is not marked complete.
+    pub fn start_download_lessons(
+        &self,
+        course_id: &str,
+        mut lessons: Vec<usize>,
+        library_root: PathBuf,
+        events: Arc<dyn DownloadEvents>,
+    ) -> Result<String, CommandError> {
+        lessons.sort_unstable();
+        lessons.dedup();
+        if lessons.is_empty() {
+            return Err(CommandError::new(
+                ErrorCode::NoLessons,
+                "choose at least one lesson",
+            ));
+        }
+        let options = DownloadOptions {
+            only_lessons: Some(lessons),
+            ..DownloadOptions::default()
+        };
+        self.start(course_id, options, library_root, events)
+    }
+
+    fn start(
+        &self,
+        course_id: &str,
+        options: DownloadOptions,
+        library_root: PathBuf,
+        events: Arc<dyn DownloadEvents>,
+    ) -> Result<String, CommandError> {
         let creds = self.credentials()?;
         if library_root.as_os_str().is_empty() {
             return Err(CommandError::new(
@@ -161,7 +208,7 @@ impl HotmartService {
         crate::downloads::ensure_library_ready(&library_root)?;
         let platform = self.factory.build(&creds).map_err(map)?;
         self.downloads
-            .start(course_id, platform, library_root, events)
+            .start_with_options(course_id, platform, library_root, options, events)
     }
 
     pub fn cancel(&self, id: &str) -> bool {
@@ -203,6 +250,8 @@ mod tests {
     struct FakeApi {
         courses: Result<Vec<CourseInfo>, PlatformError>,
         mode: Mode,
+        /// The options each download received.
+        options: Mutex<Vec<DownloadOptions>>,
     }
 
     #[async_trait]
@@ -217,10 +266,11 @@ mod tests {
             &self,
             course: &str,
             _root: &Path,
-            _o: &DownloadOptions,
+            options: &DownloadOptions,
             sink: &dyn CourseProgressSink,
             cancel: &CancelFlag,
         ) -> Result<DownloadReport, PlatformError> {
+            self.options.lock().unwrap().push(options.clone());
             if self.mode == Mode::Fails {
                 return Err(PlatformError::Network("boom".into()));
             }
@@ -252,6 +302,20 @@ mod tests {
     impl HotmartApi for FakeApi {
         async fn courses(&self) -> Result<Vec<CourseInfo>, PlatformError> {
             self.courses.clone()
+        }
+        async fn lessons(&self, course_id: &str) -> Result<Vec<LessonInfo>, PlatformError> {
+            Ok(vec![
+                LessonInfo {
+                    order: 0,
+                    module: course_id.to_uppercase(),
+                    title: "Intro".into(),
+                },
+                LessonInfo {
+                    order: 1,
+                    module: course_id.to_uppercase(),
+                    title: "Next".into(),
+                },
+            ])
         }
     }
 
@@ -306,7 +370,11 @@ mod tests {
     fn fixture(courses: Result<Vec<CourseInfo>, PlatformError>, mode: Mode) -> Fixture {
         let dir = tempfile::tempdir().unwrap();
         let factory = Arc::new(FakeFactory {
-            api: Arc::new(FakeApi { courses, mode }),
+            api: Arc::new(FakeApi {
+                courses,
+                mode,
+                options: Mutex::default(),
+            }),
             seen: Mutex::default(),
         });
         let service = HotmartService::new(
@@ -506,6 +574,53 @@ mod tests {
         })
         .await
         .unwrap();
+    }
+
+    #[tokio::test]
+    async fn lessons_come_from_the_api_and_need_a_session() {
+        let f = ok_fixture(Mode::Quick);
+        assert_eq!(
+            f.service.lessons("horizonte").await.unwrap_err().code,
+            ErrorCode::NotLoggedIn
+        );
+        f.service.login_with_credentials(TOKEN, None).await.unwrap();
+        let lessons = f.service.lessons("horizonte").await.unwrap();
+        assert_eq!(lessons.len(), 2);
+        assert_eq!(lessons[1].title, "Next");
+    }
+
+    #[tokio::test]
+    async fn a_selection_reaches_the_platform_sorted_and_without_repeats() {
+        let f = logged_in(Mode::Quick).await;
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        f.service
+            .start_download_lessons(
+                "horizonte",
+                vec![2, 0, 2],
+                f.dir.path().into(),
+                Arc::new(Channel(tx)),
+            )
+            .unwrap();
+        next_report(&mut rx).await;
+        let seen = f.factory.api.options.lock().unwrap().clone();
+        assert_eq!(seen[0].only_lessons, Some(vec![0, 2]));
+    }
+
+    #[tokio::test]
+    async fn an_empty_selection_is_rejected_before_anything_starts() {
+        let f = logged_in(Mode::Quick).await;
+        let (tx, _rx) = mpsc::unbounded_channel();
+        let err = f
+            .service
+            .start_download_lessons(
+                "horizonte",
+                vec![],
+                f.dir.path().into(),
+                Arc::new(Channel(tx)),
+            )
+            .unwrap_err();
+        assert_eq!(err.code, ErrorCode::NoLessons);
+        assert!(f.service.running().is_empty());
     }
 
     #[tokio::test]
