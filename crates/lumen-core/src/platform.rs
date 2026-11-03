@@ -28,6 +28,9 @@ pub struct DownloadOptions {
     /// `None` downloads the whole course. Used by platforms that can list a
     /// course's lessons before downloading.
     pub only_lessons: Option<Vec<usize>>,
+    /// Compare the course with the library and report what is missing,
+    /// without downloading or writing anything.
+    pub check_only: bool,
 }
 
 impl Default for DownloadOptions {
@@ -35,6 +38,7 @@ impl Default for DownloadOptions {
         Self {
             max_parallel_lessons: 1,
             only_lessons: None,
+            check_only: false,
         }
     }
 }

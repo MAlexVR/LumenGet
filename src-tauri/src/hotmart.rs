@@ -167,6 +167,22 @@ impl HotmartService {
             .map_err(map)
     }
 
+    /// Compares a course with the library and reports what is missing, without
+    /// downloading or writing anything (the report lists missing videos and
+    /// materials).
+    pub fn start_check(
+        &self,
+        course_id: &str,
+        library_root: PathBuf,
+        events: Arc<dyn DownloadEvents>,
+    ) -> Result<String, CommandError> {
+        let options = DownloadOptions {
+            check_only: true,
+            ..DownloadOptions::default()
+        };
+        self.start(course_id, options, library_root, events)
+    }
+
     /// Like [`Self::start_download`] for only the chosen lessons (positions
     /// from [`Self::lessons`]); the course is not marked complete.
     pub fn start_download_lessons(
@@ -205,7 +221,10 @@ impl HotmartService {
                 "choose a library folder first",
             ));
         }
-        crate::downloads::ensure_library_ready(&library_root)?;
+        // A check only reads the library: it must not create or probe the folder.
+        if !options.check_only {
+            crate::downloads::ensure_library_ready(&library_root)?;
+        }
         let platform = self.factory.build(&creds).map_err(map)?;
         self.downloads
             .start_with_options(course_id, platform, library_root, options, events)
@@ -604,6 +623,30 @@ mod tests {
         next_report(&mut rx).await;
         let seen = f.factory.api.options.lock().unwrap().clone();
         assert_eq!(seen[0].only_lessons, Some(vec![0, 2]));
+    }
+
+    #[tokio::test]
+    async fn a_check_starts_the_platform_in_check_only_mode() {
+        let f = logged_in(Mode::Quick).await;
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        f.service
+            .start_check("horizonte", f.dir.path().into(), Arc::new(Channel(tx)))
+            .unwrap();
+        next_report(&mut rx).await;
+        let seen = f.factory.api.options.lock().unwrap().clone();
+        assert!(seen[0].check_only);
+        assert_eq!(seen[0].only_lessons, None);
+    }
+
+    #[tokio::test]
+    async fn a_normal_download_is_not_a_check() {
+        let f = logged_in(Mode::Quick).await;
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        f.service
+            .start_download("horizonte", f.dir.path().into(), Arc::new(Channel(tx)))
+            .unwrap();
+        next_report(&mut rx).await;
+        assert!(!f.factory.api.options.lock().unwrap()[0].check_only);
     }
 
     #[tokio::test]

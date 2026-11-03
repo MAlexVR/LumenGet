@@ -82,6 +82,10 @@ pub struct DownloadReport {
     pub total_lessons: u32,
     pub completed_lessons: u32,
     pub complete: bool,
+    /// The result of a check (nothing was downloaded): the issues list what is
+    /// missing from the library.
+    #[serde(default)]
+    pub checked: bool,
     pub issues: Vec<Issue>,
 }
 
@@ -94,6 +98,7 @@ impl DownloadReport {
             total_lessons: 0,
             completed_lessons: 0,
             complete: false,
+            checked: false,
             issues: Vec::new(),
         }
     }
@@ -215,6 +220,14 @@ mod tests {
     }
 
     #[test]
+    fn a_report_written_before_checks_existed_still_loads() {
+        let old = json!({"platform":"skool","group":"g","cancelled":false,"totalLessons":3,
+                         "completedLessons":3,"complete":true,"issues":[]});
+        let r: DownloadReport = serde_json::from_value(old).unwrap();
+        assert!(!r.checked && r.complete);
+    }
+
+    #[test]
     fn report_and_progress_shapes_are_camel_case() {
         let mut r = DownloadReport::new("skool", "g");
         r.total_lessons = 3;
@@ -223,7 +236,7 @@ mod tests {
         assert_eq!(
             v,
             json!({"platform":"skool","group":"g","cancelled":false,"totalLessons":3,
-                   "completedLessons":0,"complete":true,"issues":[]})
+                   "completedLessons":0,"complete":true,"checked":false,"issues":[]})
         );
         let p = DownloadProgress {
             group: "g".into(),

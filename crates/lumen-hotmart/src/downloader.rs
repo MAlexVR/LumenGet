@@ -170,6 +170,11 @@ fn remove_part_files(dir: &Path) {
     }
 }
 
+/// An item a check found missing from the library.
+fn missing(kind: IssueKind, label: &str, what: &str) -> Issue {
+    Issue::error(kind, Some(label), None, format!("missing: {what}"))
+}
+
 fn io_err(e: &std::io::Error) -> HotmartError {
     HotmartError::Io(e.to_string())
 }
@@ -220,11 +225,15 @@ impl CourseDownloader<'_> {
             Err(_) => format!("https://{}.club.hotmart.com/", course.slug),
         };
         let dir = course_dir(library_root, course);
-        std::fs::create_dir_all(&dir).map_err(|e| io_err(&e))?;
-        remove_part_files(&dir);
+        let check = self.options.check_only;
+        if !check {
+            std::fs::create_dir_all(&dir).map_err(|e| io_err(&e))?;
+            remove_part_files(&dir);
+        }
 
         let mut plan = plan_course(&dir, &nav);
         let mut report = DownloadReport::new(PLATFORM_ID, &course.name);
+        report.checked = check;
         let partial = self.options.only_lessons.is_some();
         if let Some(only) = &self.options.only_lessons {
             let missing: Vec<String> = only
@@ -293,7 +302,10 @@ impl CourseDownloader<'_> {
             ));
         }
         report.cancelled = self.cancel.is_cancelled();
-        if partial {
+        if check {
+            // A check writes nothing: no report file and no completion marker.
+            report.finish();
+        } else if partial {
             finalize_selection(&dir, &mut report);
         } else {
             finalize_folder(&dir, &mut report);
@@ -392,7 +404,12 @@ impl CourseDownloader<'_> {
                 return issues;
             }
         };
-        if let Err(e) = std::fs::create_dir_all(&lesson.dir) {
+        let created = if self.options.check_only {
+            Ok(())
+        } else {
+            std::fs::create_dir_all(&lesson.dir)
+        };
+        if let Err(e) = created {
             issues.push(Issue::error(
                 IssueKind::Course,
                 label,
@@ -461,6 +478,14 @@ impl CourseDownloader<'_> {
             }
             let n = offset + i + 1;
             if numbered_video_exists(&lesson.dir, n) {
+                continue;
+            }
+            if self.options.check_only {
+                issues.push(missing(
+                    IssueKind::Video,
+                    &lesson.label(),
+                    &format!("video {n}"),
+                ));
                 continue;
             }
             let job = self.iframe_job(ctx, lesson, n, iframe);
@@ -569,6 +594,9 @@ impl CourseDownloader<'_> {
             return;
         }
         let label = lesson.label();
+        if self.options.check_only {
+            return issues.push(missing(IssueKind::Video, &label, &format!("video {n}")));
+        }
         let assets = match self
             .player_assets(media, &label, IssueKind::VideoNotResolved)
             .await
@@ -607,6 +635,9 @@ impl CourseDownloader<'_> {
         let base = lesson.dir.join(&stem);
         if base.exists() || finished_file_exists(&base) {
             return;
+        }
+        if self.options.check_only {
+            return issues.push(missing(IssueKind::Resource, &label, &stem));
         }
         let assets = match self.player_assets(media, &label, IssueKind::Resource).await {
             Ok(a) => a,
@@ -653,6 +684,9 @@ impl CourseDownloader<'_> {
         let drm = materials.join(format!("drm_{name}"));
         if save.exists() || drm.exists() {
             return;
+        }
+        if self.options.check_only {
+            return issues.push(missing(IssueKind::Resource, &label, &name));
         }
         let result = self
             .attempt(ctx, || async {
@@ -934,6 +968,23 @@ mod tests {
         };
         let report = d.run(&course(), root).await.unwrap();
         (report, sink)
+    }
+
+    async fn run_check(source: &FakeSource, videos: &FakeVideo, root: &Path) -> DownloadReport {
+        let sink = Collect::default();
+        let cancel = CancelFlag::new();
+        let d = CourseDownloader {
+            source,
+            videos,
+            sink: &sink,
+            cancel: &cancel,
+            options: DownloadOptions {
+                check_only: true,
+                ..DownloadOptions::default()
+            },
+            retry: quick(),
+        };
+        d.run(&course(), root).await.unwrap()
     }
 
     async fn run(source: &FakeSource, videos: &FakeVideo, root: &Path) -> DownloadReport {
@@ -1294,6 +1345,68 @@ mod tests {
                 "Materials/Plan.pdf"
             ]
         );
+    }
+
+    #[tokio::test]
+    async fn a_check_of_a_fully_downloaded_course_finds_nothing_missing_and_changes_nothing() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = full_source();
+        run(&source, &FakeVideo::default(), tmp.path()).await;
+        let before = sorted_files(tmp.path());
+        let downloads = source.count("dl:");
+        let videos = FakeVideo::default();
+        let report = run_check(&source, &videos, tmp.path()).await;
+        assert!(report.checked && report.complete, "{:?}", report.issues);
+        assert!(report.issues.is_empty(), "{:?}", report.issues);
+        assert!(videos.jobs.lock().unwrap().is_empty());
+        assert_eq!(source.count("dl:"), downloads);
+        assert_eq!(sorted_files(tmp.path()), before);
+    }
+
+    #[tokio::test]
+    async fn a_check_lists_the_missing_videos_and_materials_without_touching_anything() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = full_source();
+        run(&source, &FakeVideo::default(), tmp.path()).await;
+        let lesson = lesson_dir(tmp.path(), 1, "Lesson");
+        std::fs::remove_file(lesson.join("1. Lesson.mp4")).unwrap();
+        let material = std::fs::read_dir(lesson.join("Materials"))
+            .unwrap()
+            .flatten()
+            .find(|e| !e.file_name().to_string_lossy().starts_with("drm_"))
+            .unwrap()
+            .path();
+        std::fs::remove_file(&material).unwrap();
+        let before = sorted_files(tmp.path());
+        let marker = tmp.path().join("Hotmart/Horizonte - Marta/.complete");
+        assert!(marker.exists());
+
+        let videos = FakeVideo::default();
+        let report = run_check(&source, &videos, tmp.path()).await;
+        assert!(report.checked && !report.complete);
+        let kinds: Vec<IssueKind> = report.issues.iter().map(|i| i.kind).collect();
+        assert!(kinds.contains(&IssueKind::Video), "{:?}", report.issues);
+        assert!(kinds.contains(&IssueKind::Resource), "{:?}", report.issues);
+        assert!(report
+            .issues
+            .iter()
+            .all(|i| i.message.starts_with("missing")));
+        assert!(videos.jobs.lock().unwrap().is_empty());
+        assert_eq!(sorted_files(tmp.path()), before);
+        assert!(
+            marker.exists(),
+            "a check never touches the completion marker"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_check_of_a_course_that_was_never_downloaded_creates_nothing() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = full_source();
+        let report = run_check(&source, &FakeVideo::default(), tmp.path()).await;
+        assert!(report.checked && !report.complete);
+        assert!(report.issues.iter().any(|i| i.kind == IssueKind::Video));
+        assert!(std::fs::read_dir(tmp.path()).unwrap().next().is_none());
     }
 
     #[tokio::test]

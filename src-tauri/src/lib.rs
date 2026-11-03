@@ -667,6 +667,19 @@ async fn hotmart_download_start(
     }
 }
 
+/// Compares a purchased course with the library and reports what is missing
+/// (videos and materials) without downloading anything. The result arrives as
+/// a `download://report` event with `checked: true`.
+#[tauri::command]
+async fn hotmart_course_check(
+    course: String,
+    app: AppHandle,
+    core: State<'_, Arc<AppCore>>,
+    hotmart: State<'_, Arc<HotmartService>>,
+) -> Result<String, DownloadError> {
+    hotmart.start_check(&course, core.library_root(), Arc::new(TauriEvents { app }))
+}
+
 #[tauri::command]
 fn hotmart_download_cancel(id: String, hotmart: State<'_, Arc<HotmartService>>) -> bool {
     hotmart.cancel(&id)
@@ -1317,6 +1330,7 @@ pub fn run() {
             hotmart_logout,
             hotmart_courses,
             hotmart_course_lessons,
+            hotmart_course_check,
             hotmart_download_start,
             hotmart_download_cancel,
             hotmart_downloads_running,
