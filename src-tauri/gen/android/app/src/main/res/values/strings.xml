@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">"LumenGet"</string>
     <string name="main_activity_title">"LumenGet"</string>
+    <string name="login_close">Cerrar</string>
 </resources>

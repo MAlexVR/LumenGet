@@ -7,6 +7,7 @@ mod hotmart;
 mod library_delete;
 mod library_open;
 mod library_root;
+mod login_window;
 mod music;
 mod pluralsight;
 mod session;
@@ -49,7 +50,7 @@ use pluralsight::{
 use serde::Serialize;
 use skool::{header_from_jar, DefaultFactory, LoginOutcome, SkoolCommandError, SkoolService};
 use state::{AppCore, CommandError, RootPolicy};
-use tauri::{AppHandle, Emitter, Manager, State, Url, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, Manager, State, Url};
 use tauri_plugin_opener::OpenerExt;
 use thumbs::{CancelRequest, ThumbInfo, Thumbnails, ThumbsRequest, ThumbsStatus};
 use udemy::{DiagnoseOutcome, LoginOutcome as UdemyLoginOutcome, UdemyService};
@@ -503,33 +504,22 @@ async fn capture_webview_login(
     let parse =
         |raw: &str| Url::parse(raw).map_err(|e| login_error(ErrorCode::Internal, &e.to_string()));
     let (start, jar_url) = (parse(spec.login_url)?, parse(spec.cookie_url)?);
-    match app.get_webview_window(spec.label) {
-        Some(existing) => {
-            let _ = existing.set_focus();
-        }
-        None => {
-            WebviewWindowBuilder::new(app, spec.label, WebviewUrl::External(start))
-                .title(spec.title)
-                .inner_size(520.0, 760.0)
-                .build()
-                .map_err(|e| login_error(ErrorCode::Internal, &e.to_string()))?;
-        }
-    }
+    login_window::open(app, spec.label, spec.title, &start)
+        .map_err(|e| login_error(ErrorCode::Internal, &e))?;
     let deadline = Instant::now() + LOGIN_TIMEOUT;
     loop {
-        let Some(window) = app.get_webview_window(spec.label) else {
+        if !login_window::is_open(app, spec.label) {
             return Err(login_error(
                 ErrorCode::LoginCancelled,
                 "the login window was closed",
             ));
-        };
-        // Reading cookies can deadlock on Windows outside a separate thread.
-        let (w, u) = (window.clone(), jar_url.clone());
-        let jar = tauri::async_runtime::spawn_blocking(move || w.cookies_for_url(u))
+        }
+        let jar = login_window::cookies(app, spec.label, &jar_url)
             .await
-            .map_err(|e| login_error(ErrorCode::Internal, &e.to_string()))?;
-        if let Ok(cookies) = jar {
-            let pairs: Vec<(&str, &str)> = cookies.iter().map(|c| (c.name(), c.value())).collect();
+            .map_err(|e| login_error(ErrorCode::Internal, &e))?;
+        {
+            let pairs: Vec<(&str, &str)> =
+                jar.iter().map(|(n, v)| (n.as_str(), v.as_str())).collect();
             if let Some(credential) = (spec.extract)(pairs) {
                 let accepted = match &validator {
                     Some(validate) => {
@@ -539,15 +529,14 @@ async fn capture_webview_login(
                     None => Some(credential),
                 };
                 if let Some(credential) = accepted {
-                    let _ = window.clear_all_browsing_data();
-                    let _ = window.close();
+                    login_window::finish(app, spec.label);
                     return Ok(credential);
                 }
             }
         }
         if Instant::now() >= deadline {
             if validator.is_none() {
-                let _ = window.close();
+                login_window::finish(app, spec.label);
             }
             return Err(login_error(ErrorCode::LoginTimeout, "login timed out"));
         }
@@ -1175,6 +1164,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(android_files::init())
         .plugin(downloader_update::init())
+        .plugin(login_window::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
