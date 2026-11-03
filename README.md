@@ -143,3 +143,5 @@ pnpm test                    # UI tests (from ui/)
 
 Derived from [vintecinco_dl](https://github.com/owbryd/vintecinco_dl) by vintecinco, released under the MIT license.
 The original copyright notice is kept in [`LICENSE`](LICENSE). Platform logos shown in the app belong to their respective owners.
+
+The Android build bundles GPL-3.0 components and is distributed under the GPL-3.0; Windows and Linux stay MIT. See [`docs/ANDROID_LICENSE.md`](docs/ANDROID_LICENSE.md).

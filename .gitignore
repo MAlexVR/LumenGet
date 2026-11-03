@@ -16,7 +16,9 @@ Desktop.ini
 
 # Rust
 target/
-src-tauri/gen/
+# Generated Tauri output, except the Android project (Gradle and Kotlin edits live there)
+src-tauri/gen/*
+!src-tauri/gen/android/
 
 # Node / UI
 node_modules/
