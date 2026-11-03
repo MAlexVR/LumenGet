@@ -14,6 +14,7 @@ import type {
   PluralsightCourse,
   GoldenlifeCourse,
   HarbizCourse,
+  LessonInfo,
   RunningDownload,
   YoutubePreview,
   YoutubeQuality,
@@ -59,6 +60,10 @@ export interface DownloadItemSession {
   pause(id: string): Promise<void>;
   resume(id: string): Promise<void>;
   dismiss(id: string): void;
+  /** True on platforms that can list a course's lessons and download only some. */
+  readonly canChooseLessons?: boolean;
+  lessons?(key: string): Promise<LessonInfo[]>;
+  startLessons?(key: string, orders: number[]): Promise<void>;
 }
 
 export interface SessionAdapter<Item> {
@@ -69,6 +74,9 @@ export interface SessionAdapter<Item> {
   logout(): Promise<void>;
   list(): Promise<Item[]>;
   start(key: string): Promise<string>;
+  /** Only on platforms where lessons can be chosen. */
+  lessons?(key: string): Promise<LessonInfo[]>;
+  startLessons?(key: string, orders: number[]): Promise<string>;
   cancel(id: string): Promise<boolean>;
   running(): Promise<RunningDownload[]>;
 }
@@ -157,13 +165,33 @@ export class PlatformSession<Item> {
     }
   }
 
-  async start(key: string): Promise<void> {
+  get canChooseLessons(): boolean {
+    return !!this.#adapter?.lessons && !!this.#adapter.startLessons;
+  }
+
+  lessons(key: string): Promise<LessonInfo[]> {
+    const list = this.#adapter?.lessons;
+    return list ? list(key) : Promise.resolve([]);
+  }
+
+  startLessons(key: string, orders: number[]): Promise<void> {
+    const a = this.#adapter;
+    const run = a?.startLessons;
+    return a && run ? this.#begin(key, () => run.call(a, key, orders)) : Promise.resolve();
+  }
+
+  start(key: string): Promise<void> {
+    const a = this.#adapter;
+    return a ? this.#begin(key, () => a.start(key)) : Promise.resolve();
+  }
+
+  async #begin(key: string, run: () => Promise<string>): Promise<void> {
     const a = this.#adapter;
     if (!a || this.starting[key]) return;
     this.starting[key] = true;
     delete this.startErrors[key];
     try {
-      const id = await a.start(key);
+      const id = await run();
       center.dispatch({ type: "started", id, platform: a.platform, key });
     } catch (e) {
       const error = toDownloadError(e);
@@ -412,6 +440,8 @@ export async function initDownloads(api: Api): Promise<void> {
       logout: () => api.hotmartLogout(),
       list: () => api.hotmartCourses(),
       start: (key) => api.hotmartDownloadStart(key),
+      lessons: (key) => api.hotmartCourseLessons(key),
+      startLessons: (key, orders) => api.hotmartDownloadStart(key, orders),
       cancel: (id) => api.hotmartDownloadCancel(id),
       running: () => api.hotmartDownloadsRunning(),
     }),

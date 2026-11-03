@@ -8,6 +8,7 @@ export const ERROR_CODES: readonly DownloadErrorCode[] = [
   "invalid_credentials",
   "already_running",
   "no_library",
+  "no_lessons",
   "login_cancelled",
   "login_timeout",
   "network",

@@ -89,6 +89,7 @@ export type DownloadErrorCode =
   | "invalid_credentials"
   | "already_running"
   | "no_library"
+  | "no_lessons"
   | "login_cancelled"
   | "login_timeout"
   | "network"
@@ -127,6 +128,13 @@ export interface CourseInfo {
   coverUrl: string | null;
   purchaseDate: string | null;
   folder: string;
+}
+
+/** One lesson of a Hotmart course (hotmart_course_lessons); `order` is its position in the course. */
+export interface LessonInfo {
+  order: number;
+  module: string;
+  title: string;
 }
 
 export interface HotmartLoginOutcome {

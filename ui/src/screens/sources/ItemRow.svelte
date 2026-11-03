@@ -13,6 +13,7 @@
   import type { PlatformId } from "../../lib/types";
   import DownloadProgress from "./DownloadProgress.svelte";
   import ErrorNote from "./ErrorNote.svelte";
+  import LessonPicker from "./LessonPicker.svelte";
   import ReportPanel from "./ReportPanel.svelte";
 
   interface Props {
@@ -37,6 +38,7 @@
   const running = $derived(entry?.status === "running");
   const startError = $derived(session.startErrors[itemKey]);
   const title = $derived(displayTitle(name));
+  let choosing = $state(false);
 </script>
 
 <li class="item" data-running={running ? "" : undefined}>
@@ -77,6 +79,17 @@
           <Icon name="close" size={16} />{t(session.cancelling[entry.id] ? "dl_cancelling" : "dl_cancel")}
         </button>
       {:else}
+        {#if session.canChooseLessons}
+          <button
+            type="button"
+            class="btn btn-quiet"
+            aria-expanded={choosing}
+            onclick={() => (choosing = !choosing)}
+            aria-label="{t(choosing ? 'lp_hide' : 'lp_choose')}: {title}"
+          >
+            {t(choosing ? "lp_hide" : "lp_choose")}
+          </button>
+        {/if}
         <button
           type="button"
           class="btn btn-quiet"
@@ -103,6 +116,10 @@
         ondismiss={() => session.dismiss(entry.id)}
       />
     </div>
+  {/if}
+
+  {#if choosing}
+    <div class="detail"><LessonPicker {session} {itemKey} {name} {entry} onclose={() => (choosing = false)} /></div>
   {/if}
 
   {#if disabledReason}

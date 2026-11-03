@@ -86,7 +86,7 @@ export function createBus() {
     platform: PlatformId,
     key: string,
     name: string,
-    opts: { startAt?: number; outcome?: Exclude<Outcome, "cancelled">; modules?: [string, string]; total?: number } = {},
+    opts: { startAt?: number; outcome?: Exclude<Outcome, "cancelled">; modules?: [string, string]; total?: number; titles?: string[] } = {},
   ): string {
     const id = `dl-${counter++}`;
     const outcome = opts.outcome ?? "warn";
@@ -107,7 +107,7 @@ export function createBus() {
         platform,
         group: name,
         course: completed < 6 ? m1 : m2,
-        lesson: LESSONS[completed],
+        lesson: opts.titles?.[completed] ?? LESSONS[completed],
         percent: (step % 4) * 25,
         completed,
         total,
@@ -245,6 +245,7 @@ type HotmartApi = Pick<
   | "hotmartLogout"
   | "hotmartCourses"
   | "hotmartDownloadStart"
+  | "hotmartCourseLessons"
   | "hotmartDownloadCancel"
   | "hotmartDownloadsRunning"
 >;
@@ -283,11 +284,20 @@ export function createHotmartMock(preset: string | null, bus: Bus): HotmartApi {
       if (!loggedIn) throw err("not_logged_in", "not logged in");
       return structuredClone(COURSES);
     },
-    hotmartDownloadStart: async (course) => {
+    hotmartCourseLessons: async () => {
+      if (!loggedIn) throw err("not_logged_in", "not logged in");
+      return LESSONS.map((title, order) => ({ order, module: MODULES[order < 6 ? 0 : 1], title }));
+    },
+    hotmartDownloadStart: async (course, lessons) => {
       if (!loggedIn) throw err("not_logged_in", "not logged in");
       if (preset === "nolibrary") throw err("no_library", "choose a library folder first");
+      if (lessons && !lessons.length) throw err("no_lessons", "choose at least one lesson");
       if (bus.isRunning("hotmart", course)) throw err("already_running", "already running");
-      return bus.simulate("hotmart", course, nameOf(course), { modules: MODULES });
+      const chosen = lessons?.map((order) => LESSONS[order]).filter((title): title is string => !!title);
+      return bus.simulate("hotmart", course, nameOf(course), {
+        modules: MODULES,
+        ...(chosen ? { total: chosen.length, titles: chosen } : {}),
+      });
     },
     hotmartDownloadCancel: async (id) => bus.cancel(id, "hotmart"),
     hotmartDownloadsRunning: async () => bus.runningOf("hotmart"),

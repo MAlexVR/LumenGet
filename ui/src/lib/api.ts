@@ -24,6 +24,7 @@ import type {
   GoldenlifeCourse,
   HarbizLoginOutcome,
   HarbizCourse,
+  LessonInfo,
   ExercisePlan,
   NowPlaying,
   RepeatMode,
@@ -89,7 +90,9 @@ export interface Api {
   hotmartSessionStatus(): Promise<{ loggedIn: boolean }>;
   hotmartLogout(): Promise<void>;
   hotmartCourses(): Promise<CourseInfo[]>;
-  hotmartDownloadStart(course: string): Promise<string>;
+  /** With `lessons` (positions from hotmartCourseLessons) only those lessons are downloaded. */
+  hotmartDownloadStart(course: string, lessons?: number[]): Promise<string>;
+  hotmartCourseLessons(course: string): Promise<LessonInfo[]>;
   hotmartDownloadCancel(id: string): Promise<boolean>;
   /** Sets and repetitions of each exercise of the workout this video belongs to ([] when unknown). */
   workoutPlan(video: string): Promise<ExercisePlan[]>;
@@ -292,7 +295,8 @@ function tauriApi(): Api {
     hotmartSessionStatus: () => call("hotmart_session_status"),
     hotmartLogout: () => call("hotmart_logout"),
     hotmartCourses: () => call("hotmart_courses"),
-    hotmartDownloadStart: (course) => call("hotmart_download_start", { course }),
+    hotmartDownloadStart: (course, lessons) => call("hotmart_download_start", { course, lessons: lessons ?? null }),
+    hotmartCourseLessons: (course) => call("hotmart_course_lessons", { course }),
     hotmartDownloadCancel: (id) => call("hotmart_download_cancel", { id }),
     hotmartDownloadsRunning: () => call("hotmart_downloads_running"),
     youtubeResolve: (url) => call("youtube_resolve", { url }),

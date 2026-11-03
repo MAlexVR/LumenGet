@@ -24,6 +24,11 @@
     <ProgressLine value={pct} thickness={3} label={t("dl_progress_label", { group: displayTitle(groupName) })} />
     <span class="pct num">{pct}%</span>
   </div>
+  {#if current !== null && entry.total > 1}
+    <div class="lesson-bar">
+      <ProgressLine value={current} thickness={2} label={t("dl_progress_current", { p: current })} />
+    </div>
+  {/if}
   <p class="count num">
     {t("dl_progress_lessons", { done: entry.completed, total: entry.total || "–" })}
     {#if current !== null}<span class="current">· {t("dl_progress_current", { p: current })}</span>{/if}
@@ -75,6 +80,9 @@
   .count {
     font-size: var(--fs-xs);
     color: var(--text-muted);
+  }
+  .lesson-bar {
+    max-width: 60%;
   }
   .current {
     color: var(--text);
