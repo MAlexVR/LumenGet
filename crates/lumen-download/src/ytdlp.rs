@@ -364,12 +364,25 @@ async fn finish_temp_renames(output_template: &Path, delays: &[Duration]) -> boo
     false
 }
 
-/// Cleans a failed or cancelled run: yt-dlp leftovers plus any final file this
+/// Cleans a failed run: yt-dlp leftovers plus any final file this
 /// run created (`before` is what existed when it started). A failed
 /// post-processing step leaves the raw download under its final name, which
 /// would otherwise be skipped as "already downloaded" next time.
 fn clean_failed(output_template: &Path, before: &[PathBuf]) {
     clean_partials(output_template);
+    for created in final_outputs(output_template)
+        .into_iter()
+        .filter(|f| !before.contains(f))
+    {
+        let _ = std::fs::remove_file(created);
+    }
+}
+
+/// Cleans a cancelled run. The partial files stay (`.part`, `.ytdl`, finished
+/// `.fNNN` streams) so the next run continues where this one stopped; only a
+/// final file created by this run goes, because a cancel during the merge can
+/// leave it half written and it would be skipped as "already downloaded".
+fn clean_cancelled(output_template: &Path, before: &[PathBuf]) {
     for created in final_outputs(output_template)
         .into_iter()
         .filter(|f| !before.contains(f))
@@ -539,7 +552,7 @@ impl YtDlp {
                     if cancel.is_cancelled() {
                         let _ = child.kill().await;
                         readers.iter().for_each(JoinHandle::abort);
-                        clean_failed(output_template, &before);
+                        clean_cancelled(output_template, &before);
                         return Err(VideoError::Cancelled);
                     }
                 }
@@ -1244,6 +1257,79 @@ exit 1"#
                 .unwrap_err();
             assert_eq!(err, VideoError::Cancelled);
             assert!(t.elapsed() < Duration::from_secs(5));
+        }
+
+        async fn run_then_cancel(body: &str, dir: &Path) {
+            let y = script(dir, body);
+            let cancel = CancelFlag::new();
+            let c2 = cancel.clone();
+            tokio::spawn(async move {
+                tokio::time::sleep(Duration::from_millis(400)).await;
+                c2.cancel();
+            });
+            let err = y
+                .download(&job(dir, None), &cancel, &|_| {})
+                .await
+                .unwrap_err();
+            assert_eq!(err, VideoError::Cancelled);
+        }
+
+        fn names(dir: &Path) -> Vec<String> {
+            let mut left: Vec<String> = std::fs::read_dir(dir)
+                .unwrap()
+                .flatten()
+                .map(|e| e.file_name().to_string_lossy().into_owned())
+                .filter(|n| n != "fake-yt-dlp")
+                .collect();
+            left.sort();
+            left
+        }
+
+        #[tokio::test]
+        async fn a_cancelled_download_keeps_its_partial_files_so_yt_dlp_can_continue() {
+            let tmp = tempfile::tempdir().unwrap();
+            let dir = tmp.path();
+            run_then_cancel(
+                r#"cd "$(dirname "$0")"; echo partial > "01 - Intro.mp4.part"; echo state > "01 - Intro.mp4.ytdl"; echo v > "01 - Intro.f137.mp4"; exec sleep 30"#,
+                dir,
+            )
+            .await;
+            assert_eq!(
+                names(dir),
+                [
+                    "01 - Intro.f137.mp4",
+                    "01 - Intro.mp4.part",
+                    "01 - Intro.mp4.ytdl"
+                ]
+            );
+        }
+
+        #[tokio::test]
+        async fn a_cancel_during_the_merge_removes_the_half_written_final_file_only() {
+            let tmp = tempfile::tempdir().unwrap();
+            let dir = tmp.path();
+            run_then_cancel(
+                r#"cd "$(dirname "$0")"; echo half > "01 - Intro.mp4"; echo v > "01 - Intro.f137.mp4"; exec sleep 30"#,
+                dir,
+            )
+            .await;
+            assert_eq!(names(dir), ["01 - Intro.f137.mp4"]);
+        }
+
+        #[tokio::test]
+        async fn a_failed_download_still_cleans_every_leftover() {
+            let tmp = tempfile::tempdir().unwrap();
+            let dir = tmp.path();
+            let y = script(
+                dir,
+                r#"cd "$(dirname "$0")"; echo partial > "01 - Intro.mp4.part"; echo v > "01 - Intro.f137.mp4"; echo "ERROR: boom" >&2; exit 1"#,
+            );
+            let err = y
+                .download(&job(dir, None), &CancelFlag::new(), &|_| {})
+                .await
+                .unwrap_err();
+            assert!(matches!(err, VideoError::Failed(_)));
+            assert!(names(dir).is_empty(), "{:?}", names(dir));
         }
 
         #[tokio::test]

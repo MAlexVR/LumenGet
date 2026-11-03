@@ -152,16 +152,19 @@ fn numbered_video_exists(dir: &Path, n: usize) -> bool {
     })
 }
 
-/// Removes `*.part` files left by interrupted downloads, recursively.
+/// Removes the `*.part` files of interrupted attachment downloads (inside a
+/// `Materials` folder): they would show up as files of the lesson. The partial
+/// files of videos stay, so yt-dlp continues them instead of starting over.
 fn remove_part_files(dir: &Path) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
     };
+    let in_materials = dir.file_name().is_some_and(|n| n == "Materials");
     for entry in entries.flatten() {
         let path = entry.path();
         if path.is_dir() {
             remove_part_files(&path);
-        } else if path.extension().is_some_and(|e| e == "part") {
+        } else if in_materials && path.extension().is_some_and(|e| e == "part") {
             let _ = std::fs::remove_file(&path);
         }
     }
@@ -1216,6 +1219,81 @@ mod tests {
             .exists());
         let progress = sink.progress.lock().unwrap();
         assert!(!progress.is_empty() && progress.iter().all(|p| p.total == 1));
+    }
+
+    #[tokio::test]
+    async fn a_rerun_after_a_cancel_downloads_only_the_pending_videos() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = FakeSource {
+            nav: Some(Ok(nav(&[("h1", "A")]))),
+            ..FakeSource::default()
+        };
+        source.lesson_data(
+            "h1",
+            vec![Ok(simple_lesson(
+                "<iframe src=\"https://player.vimeo.com/video/1\"></iframe>\
+                 <iframe src=\"https://www.youtube.com/embed/YT\"></iframe>",
+            ))],
+        );
+        let cancel = CancelFlag::new();
+        let first = FakeVideo {
+            cancel_on_first: Some(cancel.clone()),
+            ..FakeVideo::default()
+        };
+        let (report, _) = run_with(&source, &first, tmp.path(), 1, &cancel).await;
+        assert!(report.unwrap().cancelled);
+        assert_eq!(first.jobs.lock().unwrap().len(), 1);
+
+        let second = FakeVideo::default();
+        let report = run(&source, &second, tmp.path()).await;
+        assert!(report.complete, "{:?}", report.issues);
+        let jobs = second.jobs.lock().unwrap();
+        assert_eq!(jobs.len(), 1, "the finished video is not downloaded again");
+        assert!(jobs[0].url.contains("youtube"));
+        assert!(lesson_dir(tmp.path(), 1, "A")
+            .join("1. Lesson.mp4")
+            .is_file());
+        assert!(lesson_dir(tmp.path(), 1, "A")
+            .join("2. Lesson [YT].mp4")
+            .is_file());
+    }
+
+    #[test]
+    fn starting_a_run_keeps_video_partials_and_removes_only_attachment_partials() {
+        let tmp = tempfile::tempdir().unwrap();
+        let lesson = tmp.path().join("1. Mod/1. A");
+        std::fs::create_dir_all(lesson.join("Materials")).unwrap();
+        for f in [
+            "1. Lesson.mp4.part",
+            "1. Lesson.mp4.ytdl",
+            "2. Podcast.mp3.part",
+            "Materials/Plan.pdf.part",
+            "Materials/Plan.pdf",
+        ] {
+            std::fs::write(lesson.join(f), "x").unwrap();
+        }
+        remove_part_files(tmp.path());
+        let mut left: Vec<String> = [
+            "1. Lesson.mp4.part",
+            "1. Lesson.mp4.ytdl",
+            "2. Podcast.mp3.part",
+            "Materials/Plan.pdf.part",
+            "Materials/Plan.pdf",
+        ]
+        .iter()
+        .filter(|f| lesson.join(f).exists())
+        .map(|f| f.to_string())
+        .collect();
+        left.sort();
+        assert_eq!(
+            left,
+            [
+                "1. Lesson.mp4.part",
+                "1. Lesson.mp4.ytdl",
+                "2. Podcast.mp3.part",
+                "Materials/Plan.pdf"
+            ]
+        );
     }
 
     #[tokio::test]
