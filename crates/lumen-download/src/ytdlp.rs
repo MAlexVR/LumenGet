@@ -429,13 +429,40 @@ where
 #[derive(Debug, Clone)]
 pub struct YtDlp {
     binary: PathBuf,
+    /// Arguments placed before every run's own (a script for an interpreter).
+    prefix_args: Vec<String>,
+    /// Extra environment for the process.
+    envs: Vec<(String, String)>,
 }
 
 impl YtDlp {
     pub fn new(binary: impl Into<PathBuf>) -> Self {
+        Self::with_launcher(binary, Vec::new(), Vec::new())
+    }
+
+    /// Runs `program` as the launcher: yt-dlp itself is one of `prefix_args`
+    /// (Android runs it through its bundled Python).
+    pub fn with_launcher(
+        program: impl Into<PathBuf>,
+        prefix_args: Vec<String>,
+        envs: Vec<(String, String)>,
+    ) -> Self {
         Self {
-            binary: binary.into(),
+            binary: program.into(),
+            prefix_args,
+            envs,
         }
+    }
+
+    pub fn envs(&self) -> &[(String, String)] {
+        &self.envs
+    }
+
+    /// The full argument list of one run.
+    pub fn launch_args(&self, args: Vec<String>) -> Vec<String> {
+        let mut all = self.prefix_args.clone();
+        all.extend(args);
+        all
     }
 
     /// The sidecar next to the app when present, otherwise `yt-dlp` from PATH.
@@ -457,7 +484,8 @@ impl YtDlp {
 impl YtDlp {
     fn command(&self, args: Vec<String>) -> Command {
         let mut cmd = Command::new(&self.binary);
-        cmd.args(args)
+        cmd.args(self.launch_args(args))
+            .envs(self.envs.iter().map(|(k, v)| (k, v)))
             .env("PYTHONUNBUFFERED", "1")
             .stdin(Stdio::null())
             .stdout(Stdio::piped())

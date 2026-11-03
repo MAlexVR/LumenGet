@@ -3,6 +3,7 @@
 //! with URL redaction, `.part` streaming, the report writer with the
 //! `.complete` rule, and the Windows-safe folder layout helpers.
 
+pub mod android;
 pub mod files;
 pub mod http;
 pub mod layout;

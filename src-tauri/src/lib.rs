@@ -35,7 +35,7 @@ use library_open::{OpenCode, OpenError};
 use library_root::{LibrarySummary, RootInfo};
 use lumen_core::progress::GroupProgress;
 use lumen_core::{Library, PlatformGroup};
-use lumen_download::{locate_ffmpeg, YtDlp};
+use lumen_download::YtDlp;
 use lumen_hotmart::CourseInfo;
 use lumen_udemy::diagnose::{DiagnoseOptions, DiagnoseProgress, DiagnoseSink};
 use lumen_udemy::parse::CourseSummary as UdemyCourse;
@@ -1096,8 +1096,52 @@ fn update_token_clear(update: State<'_, Arc<UpdateService>>) -> Result<(), Downl
 }
 
 /// Directory next to the executable, where the bundled yt-dlp sidecar lives.
+#[cfg(not(target_os = "android"))]
 fn sidecar_dir() -> Option<PathBuf> {
     std::env::current_exe().ok()?.parent().map(PathBuf::from)
+}
+
+/// yt-dlp and ffmpeg: the sidecars next to the app (else PATH) on desktop.
+#[cfg(not(target_os = "android"))]
+fn media_tools(
+    _app_dir: &std::path::Path,
+    _cache_dir: &std::path::Path,
+) -> (YtDlp, Option<PathBuf>) {
+    let ffmpeg = lumen_download::locate_ffmpeg(
+        sidecar_dir().as_deref(),
+        std::env::var_os("PATH").as_deref(),
+    );
+    (YtDlp::locate(sidecar_dir().as_deref()), ffmpeg)
+}
+
+/// yt-dlp and ffmpeg: the Android builds bundled with the app, which the
+/// Kotlin side unpacks on start. Without the native library folder there is
+/// nothing to run, and downloads report that yt-dlp was not found.
+#[cfg(target_os = "android")]
+fn media_tools(app_dir: &std::path::Path, cache_dir: &std::path::Path) -> (YtDlp, Option<PathBuf>) {
+    let maps = std::fs::read_to_string("/proc/self/maps").unwrap_or_default();
+    match lumen_download::android::native_lib_dir(&maps, "liblumen.so") {
+        Some(native) => {
+            let runtime = lumen_download::android::AndroidRuntime::new(
+                native,
+                app_dir,
+                cache_dir.to_path_buf(),
+            );
+            (runtime.ytdlp(), Some(runtime.ffmpeg()))
+        }
+        None => (YtDlp::new("yt-dlp"), None),
+    }
+}
+
+/// Thumbnails run ffmpeg on its own. On Android its libraries are found only
+/// through the environment yt-dlp is started with, so there it stays off and
+/// the UI shows no thumbnail.
+fn thumbnail_ffmpeg(ffmpeg: &Option<PathBuf>) -> Option<PathBuf> {
+    if cfg!(target_os = "android") {
+        None
+    } else {
+        ffmpeg.clone()
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -1123,11 +1167,7 @@ pub fn run() {
                 data_dir.clone(),
                 env!("CARGO_PKG_VERSION"),
             )));
-            let ytdlp = YtDlp::locate(sidecar_dir().as_deref());
-            let ffmpeg = locate_ffmpeg(
-                sidecar_dir().as_deref(),
-                std::env::var_os("PATH").as_deref(),
-            );
+            let (ytdlp, ffmpeg) = media_tools(&data_dir, &app.path().app_cache_dir()?);
             let updates_dir = app.path().app_cache_dir()?.join("updates");
             clean_stale(&updates_dir);
             let exe = std::env::current_exe().unwrap_or_default();
@@ -1159,7 +1199,7 @@ pub fn run() {
             app.manage(Arc::new(Thumbnails::new(
                 core,
                 cache_dir,
-                ffmpeg.clone(),
+                thumbnail_ffmpeg(&ffmpeg),
                 Arc::new(move |event, payload| {
                     let _ = handle.emit(event, payload);
                 }),
