@@ -150,6 +150,12 @@
     gap: var(--s-5);
     align-items: center;
   }
+  .act {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--s-2);
+  }
   .cover {
     width: 56px;
     height: 56px;
