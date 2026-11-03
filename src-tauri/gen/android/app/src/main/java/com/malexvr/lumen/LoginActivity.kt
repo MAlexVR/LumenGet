@@ -3,6 +3,7 @@ package com.malexvr.lumen
 import android.app.Activity
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.view.ViewGroup
 import android.webkit.ConsoleMessage
 import android.webkit.CookieManager
@@ -13,6 +14,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 
@@ -57,12 +59,21 @@ class LoginActivity : Activity() {
         if (request.isForMainFrame) Log.e(TAG, "login page error ${error.errorCode}: ${error.description}")
       }
     }
-    if (BuildConfig.DEBUG) {
-      webView.webChromeClient = object : WebChromeClient() {
-        override fun onConsoleMessage(message: ConsoleMessage): Boolean {
+    val progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+      max = 100
+      visibility = View.GONE
+    }
+    webView.webChromeClient = object : WebChromeClient() {
+      override fun onProgressChanged(view: WebView, newProgress: Int) {
+        progress.progress = newProgress
+        progress.visibility = if (newProgress in 1..99) View.VISIBLE else View.GONE
+      }
+
+      override fun onConsoleMessage(message: ConsoleMessage): Boolean {
+        if (BuildConfig.DEBUG) {
           Log.d(TAG, "console: ${message.message()} (${message.sourceId().substringBefore('?')}:${message.lineNumber()})")
-          return true
         }
+        return true
       }
     }
 
@@ -70,9 +81,20 @@ class LoginActivity : Activity() {
       text = getString(R.string.login_close)
       setOnClickListener { finish() }
     }
+    // A slow network can leave the page blank: let the user try again.
+    val reload = Button(this).apply {
+      text = getString(R.string.login_reload)
+      setOnClickListener { webView.reload() }
+    }
+    val bar = LinearLayout(this).apply {
+      orientation = LinearLayout.HORIZONTAL
+      addView(close, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+      addView(reload, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+    }
     val root = LinearLayout(this).apply {
       orientation = LinearLayout.VERTICAL
-      addView(close, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+      addView(bar, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+      addView(progress, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
       addView(webView, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
     }
     // Targeting a recent SDK draws edge to edge: keep clear of the system bars.
