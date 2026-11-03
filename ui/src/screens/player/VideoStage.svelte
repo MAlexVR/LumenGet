@@ -7,6 +7,7 @@
   import { ownsKeys } from "../../lib/logic/music";
   import { actionForKey, nextSpeed, SPEEDS, type PlayerAction } from "../../lib/logic/keymap";
   import { formatTime, resumeSeek, shouldSavePosition } from "../../lib/logic/time";
+  import { videoTap } from "../../lib/logic/touch";
   import SeekBar from "./SeekBar.svelte";
 
   interface Props {
@@ -190,6 +191,9 @@
     flashTimer = setTimeout(() => (flash = null), 700);
   }
 
+  /** A touch that landed while the controls were hidden only brings them back. */
+  let tapRevealsControls = false;
+
   function wake() {
     idle = false;
     clearTimeout(idleTimer);
@@ -278,6 +282,7 @@
   class:idle={idle && !paused && !speedOpen}
   bind:this={stage}
   onpointermove={wake}
+  onpointerup={wake}
   role="region"
   aria-label={t("play")}
 >
@@ -317,7 +322,14 @@
       onended();
     }}
     onerror={() => onerror(video?.error?.code ?? 0)}
-    onclick={togglePlay}
+    onpointerdown={(e) => (tapRevealsControls = videoTap(e.pointerType, idle && !paused && !speedOpen) === "reveal")}
+    onclick={() => {
+      if (tapRevealsControls) {
+        tapRevealsControls = false;
+        return;
+      }
+      togglePlay();
+    }}
     ondblclick={() => void toggleFullscreen()}
   ></video>
 

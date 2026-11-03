@@ -64,6 +64,8 @@
     display: flex;
     height: 100vh;
     min-width: 0;
+    /* Android draws the app edge to edge: keep clear of the system bars and cutouts. */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
   main {
     flex: 1;

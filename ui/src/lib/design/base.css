@@ -197,3 +197,25 @@ ol {
   margin: 0;
   background: var(--line);
 }
+
+/* Touch screens (tablets): no hover, bigger targets, no tap flash or double-tap zoom. */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a,
+summary,
+[role="button"] {
+  touch-action: manipulation;
+}
+
+@media (pointer: coarse) {
+  .btn {
+    height: 48px;
+  }
+  .icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+}
