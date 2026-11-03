@@ -61,12 +61,16 @@ use youtube::YoutubeService;
 pub struct AppInfo {
     pub name: &'static str,
     pub version: &'static str,
+    /// `std::env::consts::OS` (`linux`, `windows`, `macos`, `android`): the UI
+    /// hides what the system cannot do.
+    pub os: &'static str,
 }
 
 pub fn app_info_value() -> AppInfo {
     AppInfo {
         name: "LumenGet",
         version: env!("CARGO_PKG_VERSION"),
+        os: std::env::consts::OS,
     }
 }
 
@@ -1370,6 +1374,7 @@ mod tests {
         let info = app_info_value();
         assert_eq!(info.name, "LumenGet");
         assert_eq!(info.version, env!("CARGO_PKG_VERSION"));
+        assert_eq!(info.os, std::env::consts::OS);
     }
 
     #[tokio::test]

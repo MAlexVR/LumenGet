@@ -38,6 +38,8 @@ import type {
 export interface AppInfo {
   name: string;
   version: string;
+  /** Operating system of the backend (`linux`, `windows`, `macos`, `android`). */
+  os: string;
 }
 
 export interface Api {

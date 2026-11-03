@@ -168,23 +168,25 @@
 
     {#if openFailed}<p class="muted" role="status">{t("lr_open_failed")}</p>{/if}
 
-    <div class="actions">
-      <button
-        type="button"
-        class="btn btn-quiet"
-        bind:this={changeButton}
-        onclick={change}
-        disabled={picker.step === "picking" || picker.step === "saving"}
-      >
-        {t("lr_change")}
-      </button>
-      {#if info?.path && info.exists}
-        <button type="button" class="btn link" onclick={openFolder}>{t("lr_open")}</button>
-      {/if}
-      {#if info?.source === "saved" && !confirmingReset}
-        <button type="button" class="btn link" onclick={() => (confirmingReset = true)}>{t("lr_reset")}</button>
-      {/if}
-    </div>
+    {#if app.capabilities.changeLibraryFolder}
+      <div class="actions">
+        <button
+          type="button"
+          class="btn btn-quiet"
+          bind:this={changeButton}
+          onclick={change}
+          disabled={picker.step === "picking" || picker.step === "saving"}
+        >
+          {t("lr_change")}
+        </button>
+        {#if info?.path && info.exists}
+          <button type="button" class="btn link" onclick={openFolder}>{t("lr_open")}</button>
+        {/if}
+        {#if info?.source === "saved" && !confirmingReset}
+          <button type="button" class="btn link" onclick={() => (confirmingReset = true)}>{t("lr_reset")}</button>
+        {/if}
+      </div>
+    {/if}
   </div>
 </section>
 

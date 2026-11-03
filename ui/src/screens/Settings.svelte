@@ -31,7 +31,9 @@
 
   <LibraryRoot />
 
-  <Updates />
+  {#if app.capabilities.selfUpdate}
+    <Updates />
+  {/if}
 
   <section class="row" aria-labelledby="set-about">
     <h2 id="set-about" class="eyebrow">{t("settings_about")}</h2>

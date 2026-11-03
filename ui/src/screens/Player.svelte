@@ -213,7 +213,9 @@
             onundo={() => plan && sessions.update(lessonKey, (s) => undoSet(s, plan.number))}
             onnext={() => step(1)}
           />
-          <MusicControl {idle} />
+          {#if app.capabilities.musicControl}
+            <MusicControl {idle} />
+          {/if}
         {/snippet}
         {#if lesson.hasVideo && current}
           <!-- One stage for every video of the session: recreating it would leave fullscreen. -->

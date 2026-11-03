@@ -1,6 +1,7 @@
 // Application state: the scanned library and per-group progress.
 import { getApi, mediaUrl, type Api } from "../api";
 import { createCoalescer } from "../logic/coalesce";
+import { capabilitiesFor, type Capabilities } from "../logic/capabilities";
 import { allGroups, groupById } from "../logic/library";
 import { flattenGroup, type FlatLesson } from "../logic/progress";
 import type { Group, GroupProgress, Library, RootInfo } from "../types";
@@ -30,6 +31,7 @@ class AppStore {
   mediaBase = $state("");
   mode = $state<Api["mode"]>("mock");
   version = $state("");
+  capabilities = $state<Capabilities>(capabilitiesFor(""));
   activeGroupName = $state<string | null>(readActive());
   #api: Api | null = null;
   #rescanHooks: (() => void)[] = [];
@@ -48,6 +50,7 @@ class AppStore {
       this.mode = api.mode;
       const [info, base, rootInfo] = await Promise.all([api.appInfo(), api.mediaBase(), api.libraryRoot()]);
       this.version = info.version;
+      this.capabilities = capabilitiesFor(info.os);
       this.mediaBase = base;
       this.rootInfo = rootInfo;
       this.root = rootInfo.path ?? "";
