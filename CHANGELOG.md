@@ -8,6 +8,10 @@ Each release's notes and its git tag message are taken from the matching section
 ### Added
 
 - **LumenGet for Android, made for tablets** (64-bit ARM, Android 7.0 or newer). It plays and keeps your library, downloads from every platform (Skool, Hotmart, YouTube, Udemy, Pluralsight, Golden Life, Harbiz) and shows video thumbnails, with larger touch targets, the player controls coming back with a tap, and the layout adapted to landscape and portrait. The library lives inside the app's own storage. The Android build ships its own yt-dlp, Python and ffmpeg, and Settings → Downloader updates yt-dlp. Attachments open with the apps installed on the tablet.
+- **Choose the video quality** in Downloads: Best, 1080p, 720p (default), 480p or 360p, for every platform except YouTube (which keeps its own selector). A lower height downloads faster and takes less space.
+- **Choose which lessons to download** from a Hotmart course, with the progress of each lesson. A cancelled download keeps its partial videos and continues where it stopped, without repeating finished ones.
+- The course button says **Download all**, **Download pending** or **Update** depending on what is already in the library, and a **Check** button lists what a course is missing (pending videos and materials). The course list has Incomplete / Not downloaded / Complete filters, with incomplete courses first.
+- A **text size** control for the content of a lesson.
 - The Android build is distributed under the **GPL-3.0** because it bundles GPL components (`docs/ANDROID_LICENSE.md`). The Windows and Linux builds stay MIT. Build and signing notes: `docs/ANDROID.md`.
 
 ### Changed
