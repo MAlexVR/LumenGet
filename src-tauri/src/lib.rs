@@ -92,12 +92,21 @@ async fn library_scan(
 }
 
 /// Where the library lives when the user chose nothing: the Lumen folder in
-/// the user's Videos folder.
+/// the user's Videos folder (the app storage on Android).
 fn library_candidates(app: &AppHandle) -> Vec<std::path::PathBuf> {
-    app.path()
-        .video_dir()
-        .map(|videos| vec![videos.join("Lumen")])
-        .unwrap_or_default()
+    let android = cfg!(target_os = "android");
+    let candidates = library_root::default_candidates(
+        app.path().video_dir().ok(),
+        app.path().app_data_dir().ok(),
+        android,
+    );
+    if android {
+        // The app storage has no user-visible folder to create it for us.
+        for dir in &candidates {
+            let _ = std::fs::create_dir_all(dir);
+        }
+    }
+    candidates
 }
 
 /// Kept for the current UI: the effective root (saved choice, else detected).

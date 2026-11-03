@@ -82,6 +82,18 @@ impl RootInfo {
     }
 }
 
+/// Known library locations, best first. Android has no videos folder and the
+/// app cannot reach shared storage by path, so its library lives in the app's
+/// own storage.
+pub fn default_candidates(
+    videos: Option<PathBuf>,
+    app_data: Option<PathBuf>,
+    android: bool,
+) -> Vec<PathBuf> {
+    let base = if android { app_data } else { videos };
+    base.map(|dir| vec![dir.join("Lumen")]).unwrap_or_default()
+}
+
 /// Which platform folders a candidate library root already contains.
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -234,6 +246,28 @@ impl RootValidator {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn desktop_default_is_lumen_under_the_videos_folder() {
+        let got = default_candidates(
+            Some(PathBuf::from("/home/u/Videos")),
+            Some(PathBuf::from("/data/app")),
+            false,
+        );
+        assert_eq!(got, vec![PathBuf::from("/home/u/Videos/Lumen")]);
+        assert!(default_candidates(None, Some(PathBuf::from("/data/app")), false).is_empty());
+    }
+
+    #[test]
+    fn android_default_is_lumen_inside_the_app_storage() {
+        let got = default_candidates(
+            Some(PathBuf::from("/ignored")),
+            Some(PathBuf::from("/data/app")),
+            true,
+        );
+        assert_eq!(got, vec![PathBuf::from("/data/app/Lumen")]);
+        assert!(default_candidates(None, None, true).is_empty());
+    }
 
     fn fixture() -> (tempfile::TempDir, PathBuf, RootValidator) {
         let tmp = tempfile::tempdir().unwrap();
