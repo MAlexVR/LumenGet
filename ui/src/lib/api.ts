@@ -65,6 +65,9 @@ export interface Api {
   /** Native folder chooser; null when cancelled. Never persists. */
   libraryPickRoot(): Promise<string | null>;
   librarySummary(path: string): Promise<LibrarySummary>;
+  /** Android only: the bundled yt-dlp release and a refresh to the latest one. Reject with `{code, message}`. */
+  downloaderVersion(): Promise<{ version: string | null }>;
+  downloaderUpdate(): Promise<{ status: "updated" | "current"; version: string | null }>;
   onLibraryRootChanged(cb: (e: { path: string | null }) => void): Promise<() => void>;
 
   // Deleting downloads. Rejections carry `{ code, message }` (logic/deletion.ts).
@@ -269,6 +272,8 @@ function tauriApi(): Api {
     libraryResetRoot: () => call("library_reset_root"),
     libraryPickRoot: () => call("library_pick_root"),
     librarySummary: (path) => call("library_summary", { path }),
+    downloaderVersion: () => call("downloader_version"),
+    downloaderUpdate: () => call("downloader_update"),
     onLibraryRootChanged: (cb) => listenTo<{ path: string | null }>("library://root-changed", cb),
     libraryDeletePreview: (target) => call("library_delete_preview", { target }),
     libraryDelete: (target, permanent) => call("library_delete", { target, permanent }),

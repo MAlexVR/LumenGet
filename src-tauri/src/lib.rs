@@ -1,4 +1,5 @@
 mod android_files;
+mod downloader_update;
 mod downloads;
 mod goldenlife;
 mod harbiz;
@@ -329,6 +330,22 @@ async fn open_library_path(
 ) -> Result<(), CommandError> {
     let full = core.library_path(&path)?;
     android_files::open_file(&app, &full).map_err(CommandError::Open)
+}
+
+/// Installed yt-dlp release of the Android build.
+#[tauri::command]
+async fn downloader_version(
+    app: AppHandle,
+) -> Result<downloader_update::DownloaderInfo, downloader_update::DownloaderError> {
+    downloader_update::version(app).await
+}
+
+/// Fetches the latest yt-dlp release (Android build only).
+#[tauri::command]
+async fn downloader_update(
+    app: AppHandle,
+) -> Result<downloader_update::UpdateResult, downloader_update::DownloaderError> {
+    downloader_update::update(app).await
 }
 
 /// Opens the library root (`rel` empty) or a folder inside it with the system
@@ -1157,6 +1174,7 @@ pub fn run() {
     let result = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(android_files::init())
+        .plugin(downloader_update::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
@@ -1263,6 +1281,8 @@ pub fn run() {
             lesson_workout_plan,
             open_library_path,
             open_library_folder,
+            downloader_version,
+            downloader_update,
             media_now_playing,
             media_play_pause,
             media_next,

@@ -161,6 +161,11 @@ export function createMockApi(): Api {
       return res.ok ? res.text() : SAMPLE_DESCRIPTION;
     },
     openPath: async (path) => console.info("[mock] open", path),
+    downloaderVersion: async () => ({ version: "2026.10.01" }),
+    downloaderUpdate: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      return { status: "updated" as const, version: "2026.11.03" };
+    },
     openFolder: async (rel) => console.info("[mock] open folder", rel ?? "(root)"),
     openUrl: async (url) => console.info("[mock] open", url),
     ...createLibraryMock(params, library),

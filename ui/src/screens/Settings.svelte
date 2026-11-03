@@ -1,6 +1,7 @@
 <script lang="ts">
   import { i18n, LOCALES, setLocale, t, type Locale } from "../lib/i18n/index.svelte";
   import { app } from "../lib/state/app.svelte";
+  import Downloader from "./settings/Downloader.svelte";
   import LibraryRoot from "./settings/LibraryRoot.svelte";
   import Updates from "./settings/Updates.svelte";
 
@@ -30,6 +31,10 @@
   </section>
 
   <LibraryRoot />
+
+  {#if app.capabilities.downloaderUpdate}
+    <Downloader />
+  {/if}
 
   {#if app.capabilities.selfUpdate}
     <Updates />

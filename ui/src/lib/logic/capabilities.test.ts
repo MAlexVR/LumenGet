@@ -9,6 +9,7 @@ describe("capabilitiesFor", () => {
         changeLibraryFolder: true,
         openFolders: true,
         selfUpdate: true,
+        downloaderUpdate: false,
         musicControl: true,
       });
     }
@@ -20,6 +21,7 @@ describe("capabilitiesFor", () => {
       changeLibraryFolder: false,
       openFolders: false,
       selfUpdate: false,
+      downloaderUpdate: true,
       musicControl: false,
     });
   });

@@ -9,6 +9,8 @@ export interface Capabilities {
   openFolders: boolean;
   /** Download and install a new version from inside the app. */
   selfUpdate: boolean;
+  /** Refresh the yt-dlp that ships inside the app (Android; desktop uses the system's). */
+  downloaderUpdate: boolean;
   /** Control the Spotify player through MPRIS (Linux desktop only for now). */
   musicControl: boolean;
 }
@@ -20,6 +22,7 @@ export function capabilitiesFor(os: string): Capabilities {
     changeLibraryFolder: !android,
     openFolders: !android,
     selfUpdate: !android,
+    downloaderUpdate: android,
     musicControl: !android,
   };
 }
