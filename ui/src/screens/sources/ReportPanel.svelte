@@ -30,7 +30,12 @@
     ].filter((p): p is string => typeof p === "string");
     return parts.length ? t("ck_counts_missing", { items: parts.join(` ${t("ck_and")} `) }) : tn("dl_errors", summary.errorCount);
   });
-  const ICON: Record<string, IconName> = { complete: "check", warnings: "check", errors: "alert", cancelled: "close" };
+  const ICON: Record<string, IconName> = { complete: "check", warnings: "check", errors: "alert", cancelled: "close", pending: "download" };
+  /** A check that found things missing is a list of pending items, not of errors. */
+  const pending = $derived(summary.checked && summary.state === "errors");
+  const view = $derived(pending ? "pending" : summary.state);
+  const CHECK_KINDS = { video: "ck_kind_video", video_not_resolved: "ck_kind_video", resource: "ck_kind_resource" } as const;
+  const kindLabel = (kind: IssueGroup["kind"]) => (summary.checked && kind in CHECK_KINDS ? t(CHECK_KINDS[kind as keyof typeof CHECK_KINDS]) : t(`dl_kind_${kind}`));
 
   // Move focus to the result when it replaces the control the user was on.
   $effect(() => {
@@ -61,7 +66,7 @@
     <details class="kind" data-severity={severity} open={severity === "error"}>
       <summary>
         <Icon name="chevronRight" size={14} />
-        <span>{t(`dl_kind_${g.kind}`)}</span>
+        <span>{kindLabel(g.kind)}</span>
         <span class="count num">{g.issues.length}</span>
       </summary>
       <ul>
@@ -93,9 +98,9 @@
   {/each}
 {/snippet}
 
-<section class="result" data-state={summary.state} aria-labelledby="res-{uid}" bind:this={panel}>
+<section class="result" data-state={view} aria-labelledby="res-{uid}" bind:this={panel}>
   <header>
-    <span class="mark" aria-hidden="true"><Icon name={ICON[summary.state]} size={20} /></span>
+    <span class="mark" aria-hidden="true"><Icon name={ICON[view]} size={20} /></span>
     <div>
       {#if summary.checked && summary.state !== "cancelled"}
         <h4 id="res-{uid}" tabindex="-1" bind:this={heading}>{t(summary.state === "errors" ? "ck_state_missing" : "ck_state_complete")}</h4>
@@ -149,6 +154,9 @@
   .result[data-state="errors"] {
     border-left-color: var(--danger);
   }
+  .result[data-state="pending"] {
+    border-left-color: var(--moon);
+  }
   header {
     display: flex;
     gap: var(--s-3);
@@ -164,6 +172,12 @@
   }
   [data-state="errors"] .mark {
     color: var(--danger);
+  }
+  [data-state="pending"] .mark {
+    color: var(--moon);
+  }
+  [data-state="pending"] .count {
+    color: var(--moon);
   }
   h4 {
     font-family: var(--font-display);
