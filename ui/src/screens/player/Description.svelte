@@ -5,6 +5,7 @@
   import { t } from "../../lib/i18n/index.svelte";
   import { buildDescriptionDoc, externalHref } from "../../lib/logic/description";
   import { app } from "../../lib/state/app.svelte";
+  import { textSize } from "../../lib/state/textSize.svelte";
 
   let { path, heading }: { path: string; heading?: string } = $props();
   const uid = $props.id();
@@ -29,7 +30,7 @@
     const css = getComputedStyle(document.documentElement);
     const v = (name: string) => css.getPropertyValue(name).trim();
     return `:root{color-scheme:dark}html,body{margin:0;padding:0;background:transparent!important;color:${v("--text-muted")}!important;
-font:15px/1.7 ${v("--font-ui")};overflow:hidden;overflow-wrap:anywhere}
+font:${textSize.px}px/1.7 ${v("--font-ui")};overflow:hidden;overflow-wrap:anywhere}
 body *:not(a){color:inherit!important;background-color:transparent!important;font-family:inherit!important}
 h1,h2,h3,h4,strong,b{color:${v("--text")}!important}
 h1,h2,h3{font-weight:500;line-height:1.3}
@@ -85,7 +86,18 @@ pre{white-space:pre-wrap}`;
 
 {#if html}
   <section class="desc" aria-labelledby="desc-h-{uid}">
-    <h2 id="desc-h-{uid}" class="eyebrow">{heading ?? t("description")}</h2>
+    <div class="head">
+      <h2 id="desc-h-{uid}" class="eyebrow">{heading ?? t("description")}</h2>
+      <div class="size" role="group" aria-label={t("ts_label")}>
+        <button type="button" class="icon-btn" onclick={() => textSize.smaller()} disabled={!textSize.canShrink} aria-label={t("ts_smaller")} title={t("ts_smaller")}>
+          <span aria-hidden="true">A<small>−</small></span>
+        </button>
+        <span class="num px" aria-live="polite">{textSize.px}</span>
+        <button type="button" class="icon-btn" onclick={() => textSize.bigger()} disabled={!textSize.canGrow} aria-label={t("ts_bigger")} title={t("ts_bigger")}>
+          <span aria-hidden="true">A<small>+</small></span>
+        </button>
+      </div>
+    </div>
     <iframe
       bind:this={frame}
       title={heading ?? t("description")}
@@ -102,8 +114,32 @@ pre{white-space:pre-wrap}`;
     display: grid;
     gap: var(--s-3);
   }
+  .head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s-3);
+  }
   h2 {
     font-family: var(--font-ui);
+  }
+  .size {
+    display: flex;
+    align-items: center;
+    gap: var(--s-1);
+  }
+  .size .icon-btn span {
+    font-size: var(--fs-base);
+    line-height: 1;
+  }
+  .size small {
+    font-size: 0.7em;
+  }
+  .px {
+    min-width: 2.5ch;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: var(--fs-xs);
   }
   iframe {
     width: 100%;
