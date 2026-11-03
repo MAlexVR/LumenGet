@@ -269,6 +269,8 @@ export interface ReportEvent {
   totalLessons: number;
   completedLessons: number;
   complete: boolean;
+  /** A check, not a download: the issues list what is missing from the library. */
+  checked?: boolean;
   issues: Issue[];
 }
 

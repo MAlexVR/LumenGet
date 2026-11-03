@@ -93,6 +93,8 @@ export interface Api {
   /** With `lessons` (positions from hotmartCourseLessons) only those lessons are downloaded. */
   hotmartDownloadStart(course: string, lessons?: number[]): Promise<string>;
   hotmartCourseLessons(course: string): Promise<LessonInfo[]>;
+  /** Compares a course with the library (nothing is downloaded); the result arrives as a report with `checked`. */
+  hotmartCourseCheck(course: string): Promise<string>;
   hotmartDownloadCancel(id: string): Promise<boolean>;
   /** Sets and repetitions of each exercise of the workout this video belongs to ([] when unknown). */
   workoutPlan(video: string): Promise<ExercisePlan[]>;
@@ -297,6 +299,7 @@ function tauriApi(): Api {
     hotmartCourses: () => call("hotmart_courses"),
     hotmartDownloadStart: (course, lessons) => call("hotmart_download_start", { course, lessons: lessons ?? null }),
     hotmartCourseLessons: (course) => call("hotmart_course_lessons", { course }),
+    hotmartCourseCheck: (course) => call("hotmart_course_check", { course }),
     hotmartDownloadCancel: (id) => call("hotmart_download_cancel", { id }),
     hotmartDownloadsRunning: () => call("hotmart_downloads_running"),
     youtubeResolve: (url) => call("youtube_resolve", { url }),

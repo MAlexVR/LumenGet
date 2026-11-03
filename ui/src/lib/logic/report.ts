@@ -11,6 +11,8 @@ export interface IssueGroup {
 
 export interface ReportSummary {
   state: ReportState;
+  /** The report comes from a check: nothing was downloaded. */
+  checked: boolean;
   ok: number;
   total: number;
   errorCount: number;
@@ -42,12 +44,22 @@ export function summarizeReport(r: ReportEvent): ReportSummary {
         : "complete";
   return {
     state,
+    checked: r.checked === true,
     ok: Math.min(r.completedLessons, r.totalLessons),
     total: r.totalLessons,
     errorCount: errors.length,
     warningCount: warnings.length,
     errors: group(errors),
     warnings: group(warnings),
+  };
+}
+
+/** What a check found missing: videos and materials (errors only). */
+export function missingCounts(r: ReportEvent): { videos: number; materials: number } {
+  const missing = r.issues.filter((i) => i.severity === "error");
+  return {
+    videos: missing.filter((i) => i.kind === "video" || i.kind === "video_not_resolved").length,
+    materials: missing.filter((i) => i.kind === "resource").length,
   };
 }
 

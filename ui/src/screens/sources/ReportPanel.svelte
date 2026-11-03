@@ -4,7 +4,7 @@
   import { t, tn } from "../../lib/i18n/index.svelte";
   import { app } from "../../lib/state/app.svelte";
   import type { DownloadEntry } from "../../lib/logic/downloads";
-  import { issueNote, summarizeReport, type IssueGroup } from "../../lib/logic/report";
+  import { issueNote, missingCounts, summarizeReport, type IssueGroup } from "../../lib/logic/report";
   import { displayTitle } from "../../lib/logic/title";
   import type { ReportEvent } from "../../lib/types";
 
@@ -22,6 +22,14 @@
   let copied = $state<string | null>(null);
 
   const summary = $derived(summarizeReport(report));
+  const missing = $derived(missingCounts(report));
+  const missingText = $derived.by(() => {
+    const parts = [
+      missing.videos > 0 && t(missing.videos === 1 ? "ck_videos_one" : "ck_videos_n", { n: missing.videos }),
+      missing.materials > 0 && t(missing.materials === 1 ? "ck_materials_one" : "ck_materials_n", { n: missing.materials }),
+    ].filter((p): p is string => typeof p === "string");
+    return parts.length ? t("ck_counts_missing", { items: parts.join(` ${t("ck_and")} `) }) : tn("dl_errors", summary.errorCount);
+  });
   const ICON: Record<string, IconName> = { complete: "check", warnings: "check", errors: "alert", cancelled: "close" };
 
   // Move focus to the result when it replaces the control the user was on.
@@ -65,6 +73,8 @@
             {#if note}
               <p class="msg">{t(note.message)}</p>
               <p class="hint">{t(note.hint)}</p>
+            {:else if summary.checked && issue.message.startsWith("missing:")}
+              <p class="msg">{t("ck_missing_item", { what: issue.message.slice("missing:".length).trim() })}</p>
             {:else}
               <p class="msg">{issue.message}</p>
             {/if}
@@ -87,12 +97,19 @@
   <header>
     <span class="mark" aria-hidden="true"><Icon name={ICON[summary.state]} size={20} /></span>
     <div>
-      <h4 id="res-{uid}" tabindex="-1" bind:this={heading}>{t(`dl_state_${summary.state}`)}</h4>
-      <p class="counts num">
-        {t("dl_result_counts", { ok: summary.ok, total: summary.total })}
-        {#if summary.errorCount}<span class="e">· {tn("dl_errors", summary.errorCount)}</span>{/if}
-        {#if summary.warningCount}<span class="w">· {tn("dl_warnings", summary.warningCount)}</span>{/if}
-      </p>
+      {#if summary.checked && summary.state !== "cancelled"}
+        <h4 id="res-{uid}" tabindex="-1" bind:this={heading}>{t(summary.state === "errors" ? "ck_state_missing" : "ck_state_complete")}</h4>
+        <p class="counts num">
+          {summary.state === "errors" ? missingText : t("ck_counts_complete", { total: summary.total })}
+        </p>
+      {:else}
+        <h4 id="res-{uid}" tabindex="-1" bind:this={heading}>{t(`dl_state_${summary.state}`)}</h4>
+        <p class="counts num">
+          {t("dl_result_counts", { ok: summary.ok, total: summary.total })}
+          {#if summary.errorCount}<span class="e">· {tn("dl_errors", summary.errorCount)}</span>{/if}
+          {#if summary.warningCount}<span class="w">· {tn("dl_warnings", summary.warningCount)}</span>{/if}
+        </p>
+      {/if}
     </div>
   </header>
 
@@ -110,7 +127,7 @@
       </button>
     {/if}
     {#if summary.state === "errors" || summary.state === "cancelled"}
-      <button type="button" class="btn btn-quiet" onclick={onretry}>{t("dl_retry")}</button>
+      <button type="button" class="btn btn-quiet" onclick={onretry}>{t(summary.checked ? "ck_download_missing" : "dl_retry")}</button>
     {/if}
     <button type="button" class="btn link" onclick={ondismiss} data-id={entry.id}>{t("dl_dismiss")}</button>
   </div>

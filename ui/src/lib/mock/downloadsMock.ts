@@ -38,6 +38,13 @@ const LESSONS = [
   "Cierre y próximos pasos",
 ];
 
+/** What a check of a partly downloaded course finds missing. */
+const MISSING: Issue[] = [
+  { lesson: "Fundamentos / 3. Organiza tu semana", kind: "video", severity: "error", host: null, url: null, message: "missing: video 1" },
+  { lesson: "Fundamentos / 5. Revisión de entregas", kind: "video", severity: "error", host: null, url: null, message: "missing: video 1" },
+  { lesson: "Estrategia / 2. Plantilla de trabajo", kind: "resource", severity: "error", host: null, url: null, message: "missing: Plantilla.pdf" },
+];
+
 const ISSUES: Record<Exclude<Outcome, "cancelled">, Issue[]> = {
   ok: [],
   warn: [
@@ -61,7 +68,7 @@ const REPORT_PRESETS: Record<string, Outcome> = { "report-ok": "ok", "report-war
 export function createBus() {
   const progress = new Set<(e: ProgressEvent) => void>();
   const reports = new Set<(e: ReportEvent) => void>();
-  const running = new Map<string, { platform: PlatformId; key: string; name: string; paused?: boolean; timer?: ReturnType<typeof setInterval> }>();
+  const running = new Map<string, { platform: PlatformId; key: string; name: string; paused?: boolean; checked?: boolean; timer?: ReturnType<typeof setInterval> }>();
   let counter = 1;
 
   function finish(id: string, outcome: Outcome, done: number, total = LESSONS.length) {
@@ -75,8 +82,9 @@ export function createBus() {
       cancelled: outcome === "cancelled",
       totalLessons: total,
       completedLessons: done,
-      complete: outcome === "ok" || outcome === "warn" || outcome === "ytwarn",
-      issues: outcome === "cancelled" ? [] : ISSUES[outcome],
+      complete: r?.checked ? false : outcome === "ok" || outcome === "warn" || outcome === "ytwarn",
+      ...(r?.checked ? { checked: true } : {}),
+      issues: outcome === "cancelled" ? [] : r?.checked ? MISSING : ISSUES[outcome],
     };
     reports.forEach((cb) => cb(e));
   }
@@ -86,13 +94,13 @@ export function createBus() {
     platform: PlatformId,
     key: string,
     name: string,
-    opts: { startAt?: number; outcome?: Exclude<Outcome, "cancelled">; modules?: [string, string]; total?: number; titles?: string[] } = {},
+    opts: { startAt?: number; outcome?: Exclude<Outcome, "cancelled">; modules?: [string, string]; total?: number; titles?: string[]; checked?: boolean } = {},
   ): string {
     const id = `dl-${counter++}`;
     const outcome = opts.outcome ?? "warn";
     const [m1, m2] = opts.modules ?? ["Hábitos de los que avanzan", "Conoce las herramientas básicas"];
     let step = (opts.startAt ?? 0) * 4;
-    const entry: { platform: PlatformId; key: string; name: string; paused?: boolean; timer?: ReturnType<typeof setInterval> } = { platform, key, name };
+    const entry: { platform: PlatformId; key: string; name: string; paused?: boolean; checked?: boolean; timer?: ReturnType<typeof setInterval> } = { platform, key, name, ...(opts.checked ? { checked: true } : {}) };
     running.set(id, entry);
     entry.timer = setInterval(() => {
       if (entry.paused) return;
@@ -246,6 +254,7 @@ type HotmartApi = Pick<
   | "hotmartCourses"
   | "hotmartDownloadStart"
   | "hotmartCourseLessons"
+  | "hotmartCourseCheck"
   | "hotmartDownloadCancel"
   | "hotmartDownloadsRunning"
 >;
@@ -298,6 +307,11 @@ export function createHotmartMock(preset: string | null, bus: Bus): HotmartApi {
         modules: MODULES,
         ...(chosen ? { total: chosen.length, titles: chosen } : {}),
       });
+    },
+    hotmartCourseCheck: async (course) => {
+      if (!loggedIn) throw err("not_logged_in", "not logged in");
+      if (bus.isRunning("hotmart", course)) throw err("already_running", "already running");
+      return bus.simulate("hotmart", course, nameOf(course), { modules: MODULES, checked: true, outcome: "err", startAt: 10 });
     },
     hotmartDownloadCancel: async (id) => bus.cancel(id, "hotmart"),
     hotmartDownloadsRunning: async () => bus.runningOf("hotmart"),

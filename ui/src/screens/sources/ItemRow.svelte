@@ -38,6 +38,9 @@
   const running = $derived(entry?.status === "running");
   const startError = $derived(session.startErrors[itemKey]);
   const title = $derived(displayTitle(name));
+  /** What the main button says: nothing local is a full download, a partial one resumes, a complete one updates. */
+  const labels = { none: "dl_download_all", partial: "dl_download_pending", complete: "dl_update" } as const;
+  const hints = { none: "dl_hint_all", partial: "dl_hint_pending", complete: "dl_hint_update" } as const;
   let choosing = $state(false);
 </script>
 
@@ -90,15 +93,28 @@
             {t(choosing ? "lp_hide" : "lp_choose")}
           </button>
         {/if}
+        {#if session.canCheck}
+          <button
+            type="button"
+            class="btn btn-quiet"
+            onclick={() => session.check?.(itemKey)}
+            disabled={session.starting[itemKey] || disabledReason !== null}
+            title={t("ck_hint")}
+            aria-label="{t('ck_check')}: {title}"
+          >
+            {t("ck_check")}
+          </button>
+        {/if}
         <button
           type="button"
           class="btn btn-quiet"
           onclick={() => session.start(itemKey)}
           disabled={session.starting[itemKey] || disabledReason !== null}
-          aria-label="{t(local === 'none' ? 'dl_download' : 'dl_update')}: {title}"
+          title={t(hints[local])}
+          aria-label="{t(labels[local])}: {title}"
         >
           <Icon name="download" size={16} />
-          {t(session.starting[itemKey] ? "dl_starting" : local === "none" ? "dl_download" : "dl_update")}
+          {t(session.starting[itemKey] ? "dl_starting" : labels[local])}
         </button>
       {/if}
     </div>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Issue, ReportEvent } from "../types";
-import { issueNote, summarizeReport } from "./report";
+import { issueNote, missingCounts, summarizeReport } from "./report";
 
 const issue = (i: Partial<Issue>): Issue => ({
   lesson: "L",
@@ -82,5 +82,38 @@ describe("issueNote", () => {
   it("leaves every other message as the backend wrote it", () => {
     expect(issueNote(issue({ kind: "course", message: "download failed: network error" }))).toBeNull();
     expect(issueNote(issue({ kind: "video", message: "course has no modules" }))).toBeNull();
+  });
+});
+
+describe("a check report", () => {
+  it("is flagged as a check and counts what is missing by kind", () => {
+    const r = report({
+      checked: true,
+      complete: false,
+      issues: [
+        issue({ kind: "video", message: "missing: video 1" }),
+        issue({ kind: "video_not_resolved", message: "missing: video 2" }),
+        issue({ kind: "resource", message: "missing: Plan.pdf" }),
+        issue({ kind: "resource", message: "missing: Guide.pdf" }),
+        issue({ kind: "resource", message: "missing: Notes.pdf" }),
+        issue({ kind: "empty_lesson", severity: "warning", message: "missing: Description.html" }),
+      ],
+    });
+    expect(summarizeReport(r)).toMatchObject({ checked: true, state: "errors" });
+    expect(missingCounts(r)).toEqual({ videos: 2, materials: 3 });
+  });
+
+  it("is complete when nothing is missing", () => {
+    expect(summarizeReport(report({ checked: true }))).toMatchObject({ checked: true, state: "complete" });
+    expect(missingCounts(report({ checked: true }))).toEqual({ videos: 0, materials: 0 });
+  });
+
+  it("is not a check by default", () => {
+    expect(summarizeReport(report({})).checked).toBe(false);
+  });
+
+  it("counts only errors as missing items, never warnings", () => {
+    const r = report({ checked: true, issues: [issue({ kind: "resource", severity: "warning" })] });
+    expect(missingCounts(r)).toEqual({ videos: 0, materials: 0 });
   });
 });

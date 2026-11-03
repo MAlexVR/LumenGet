@@ -62,6 +62,9 @@ export interface DownloadItemSession {
   dismiss(id: string): void;
   /** True on platforms that can list a course's lessons and download only some. */
   readonly canChooseLessons?: boolean;
+  /** True on platforms that can compare a course with the library without downloading. */
+  readonly canCheck?: boolean;
+  check?(key: string): Promise<void>;
   lessons?(key: string): Promise<LessonInfo[]>;
   startLessons?(key: string, orders: number[]): Promise<void>;
 }
@@ -77,6 +80,8 @@ export interface SessionAdapter<Item> {
   /** Only on platforms where lessons can be chosen. */
   lessons?(key: string): Promise<LessonInfo[]>;
   startLessons?(key: string, orders: number[]): Promise<string>;
+  /** Only on platforms that can check a course against the library. */
+  check?(key: string): Promise<string>;
   cancel(id: string): Promise<boolean>;
   running(): Promise<RunningDownload[]>;
 }
@@ -167,6 +172,16 @@ export class PlatformSession<Item> {
 
   get canChooseLessons(): boolean {
     return !!this.#adapter?.lessons && !!this.#adapter.startLessons;
+  }
+
+  get canCheck(): boolean {
+    return !!this.#adapter?.check;
+  }
+
+  check(key: string): Promise<void> {
+    const a = this.#adapter;
+    const run = a?.check;
+    return a && run ? this.#begin(key, () => run.call(a, key)) : Promise.resolve();
   }
 
   lessons(key: string): Promise<LessonInfo[]> {
@@ -442,6 +457,7 @@ export async function initDownloads(api: Api): Promise<void> {
       start: (key) => api.hotmartDownloadStart(key),
       lessons: (key) => api.hotmartCourseLessons(key),
       startLessons: (key, orders) => api.hotmartDownloadStart(key, orders),
+      check: (key) => api.hotmartCourseCheck(key),
       cancel: (id) => api.hotmartDownloadCancel(id),
       running: () => api.hotmartDownloadsRunning(),
     }),
