@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ProgressEvent, ReportEvent } from "../types";
-import { downloadFor, finishedALesson, initialDownloads, overallPercent, reduceDownloads, type DownloadsState } from "./downloads";
+import { downloadFor, finishedALesson, initialDownloads, lessonPercent, overallPercent, reduceDownloads, type DownloadsState } from "./downloads";
 
 const progress = (p: Partial<ProgressEvent> = {}): ProgressEvent => ({
   id: "dl-1",
@@ -155,6 +155,20 @@ describe("selectors", () => {
     expect(overallPercent(s["dl-1"])).toBe(25);
     expect(overallPercent({ ...s["dl-1"], total: 0 })).toBe(0);
     expect(overallPercent({ ...s["dl-1"], completed: 10, percent: 100 })).toBe(100);
+  });
+
+  it("shows the percent of the lesson being downloaded, so one long video does not look frozen", () => {
+    const s = run({ type: "started", id: "dl-1", platform: "hotmart", key: "g" }, { type: "progress", event: progress({ completed: 3, percent: 37.4, total: 417 }) });
+    expect(lessonPercent(s["dl-1"])).toBe(37);
+    expect(overallPercent(s["dl-1"])).toBe(1);
+  });
+
+  it("shows no lesson percent before the video starts, once it ends or when nothing runs", () => {
+    const s = run({ type: "started", id: "dl-1", platform: "hotmart", key: "g" }, { type: "progress", event: progress({ percent: 0 }) });
+    expect(lessonPercent(s["dl-1"])).toBeNull();
+    expect(lessonPercent({ ...s["dl-1"], percent: 100 })).toBeNull();
+    expect(lessonPercent({ ...s["dl-1"], percent: 40, total: 0 })).toBeNull();
+    expect(lessonPercent({ ...s["dl-1"], percent: 40, status: "finished" })).toBeNull();
   });
 });
 

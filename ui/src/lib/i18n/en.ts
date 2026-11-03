@@ -201,6 +201,7 @@ export const en: Record<MessageKey, string> = {
   dl_starting: "Starting…",
   dl_preparing: "Preparing the lesson list…",
   dl_progress_lessons: "{done}/{total} lessons",
+  dl_progress_current: "current lesson {p}%",
   dl_progress_label: "Download progress for {group}",
   dl_cancel_download: "Cancel download",
   dl_cancelling: "Cancelling…",

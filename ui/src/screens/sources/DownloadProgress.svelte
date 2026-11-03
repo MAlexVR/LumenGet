@@ -2,11 +2,12 @@
   // Live progress of one running download.
   import ProgressLine from "../../lib/components/ProgressLine.svelte";
   import { t } from "../../lib/i18n/index.svelte";
-  import { overallPercent, type DownloadEntry } from "../../lib/logic/downloads";
+  import { lessonPercent, overallPercent, type DownloadEntry } from "../../lib/logic/downloads";
   import { displayTitle } from "../../lib/logic/title";
 
   let { entry, groupName }: { entry: DownloadEntry; groupName: string } = $props();
   const pct = $derived(overallPercent(entry));
+  const current = $derived(lessonPercent(entry));
 </script>
 
 <div class="progress">
@@ -23,7 +24,10 @@
     <ProgressLine value={pct} thickness={3} label={t("dl_progress_label", { group: displayTitle(groupName) })} />
     <span class="pct num">{pct}%</span>
   </div>
-  <p class="count num">{t("dl_progress_lessons", { done: entry.completed, total: entry.total || "–" })}</p>
+  <p class="count num">
+    {t("dl_progress_lessons", { done: entry.completed, total: entry.total || "–" })}
+    {#if current !== null}<span class="current">· {t("dl_progress_current", { p: current })}</span>{/if}
+  </p>
   {#if entry.paused}
     <p class="paused" role="status">{t("dl_paused_note")}</p>
   {/if}
@@ -71,6 +75,9 @@
   .count {
     font-size: var(--fs-xs);
     color: var(--text-muted);
+  }
+  .current {
+    color: var(--text);
   }
   .paused {
     color: var(--lumen);

@@ -199,6 +199,7 @@ export const es = {
   dl_starting: "Iniciando…",
   dl_preparing: "Preparando la lista de clases…",
   dl_progress_lessons: "{done}/{total} clases",
+  dl_progress_current: "clase actual {p}%",
   dl_progress_label: "Progreso de la descarga de {group}",
   dl_cancel_download: "Cancelar descarga",
   dl_cancelling: "Cancelando…",

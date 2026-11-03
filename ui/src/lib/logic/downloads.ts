@@ -131,6 +131,13 @@ export function downloadFor(
 
 const idNumber = (id: string): number => Number(id.replace(/\D+/g, "")) || 0;
 
+/** Progress of the video being downloaded now; null when there is none to show. */
+export function lessonPercent(d: DownloadEntry): number | null {
+  if (!d.total || d.status !== "running") return null;
+  const p = Math.round(Math.max(0, Math.min(100, d.percent)));
+  return p > 0 && p < 100 ? p : null;
+}
+
 export function overallPercent(d: DownloadEntry): number {
   if (!d.total) return 0;
   const done = Math.min(d.total, d.completed + Math.max(0, Math.min(100, d.percent)) / 100);
